@@ -11,6 +11,7 @@ QuestionAnswerLog.csv
 .pytest_cache
 .venv
 .vscode
+*.egg-info
 *.log
 *.pyc
 */secrets/*
