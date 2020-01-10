@@ -1,7 +1,7 @@
 import logging
 import requests
 import os
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, Iterable, List, Optional
 from time import sleep
 
 import boto3
@@ -136,7 +136,7 @@ class AWSTranscriptionService(TranscriptionService):
 
     def transcribe(
         self,
-        transcribe_requests: List[TranscribeJobRequest],
+        transcribe_requests: Iterable[TranscribeJobRequest],
         batch_id: str = "",
         poll_interval=5,
         on_update: Optional[Callable[[TranscribeJobsUpdate], None]] = None,
@@ -145,10 +145,11 @@ class AWSTranscriptionService(TranscriptionService):
         result = TranscribeBatchResult(
             transcribeJobsById={r.get_fq_id(): r.to_job() for r in transcribe_requests}
         )
-        for i, r in enumerate(transcribe_requests):
+        request_list = [r for r in transcribe_requests]
+        for i, r in enumerate(request_list):
             item_s3_path = self.get_s3_path(r.sourceFile, r.get_fq_id())
             logging.info(
-                f"transcribe [{i + 1}/{len(transcribe_requests)}] uploading audio to s3 {item_s3_path}"
+                f"transcribe [{i + 1}/{len(request_list)}] uploading audio to s3 {item_s3_path}"
             )
             self.s3_client.upload_file(
                 r.sourceFile,
@@ -194,7 +195,7 @@ class AWSTranscriptionService(TranscriptionService):
                     logging.exception(f"failed to handle update for {ju}: {ex}")
             summary = result.summary()
             logging.info(
-                f"transcribe [{summary.get_count_completed()}/{len(transcribe_requests)}] completed. Statuses [SUCCEEDED: {summary.get_count(TranscribeJobStatus.SUCCEEDED)}, FAILED: {summary.get_count(TranscribeJobStatus.FAILED)}, QUEUED: {summary.get_count(TranscribeJobStatus.QUEUED)}, IN_PROGRESS: {summary.get_count(TranscribeJobStatus.IN_PROGRESS)}]."
+                f"transcribe [{summary.get_count_completed()}/{len(request_list)}] completed. Statuses [SUCCEEDED: {summary.get_count(TranscribeJobStatus.SUCCEEDED)}, FAILED: {summary.get_count(TranscribeJobStatus.FAILED)}, QUEUED: {summary.get_count(TranscribeJobStatus.QUEUED)}, IN_PROGRESS: {summary.get_count(TranscribeJobStatus.IN_PROGRESS)}]."
             )
             if on_update and len(idsUpdated) > 0:
                 assert on_update is not None
