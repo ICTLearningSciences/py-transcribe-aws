@@ -1,5 +1,4 @@
 from dataclasses import dataclass, field
-import os
 import requests_mock
 from typing import Any, Dict, List, Tuple
 from unittest.mock import call, Mock
@@ -10,7 +9,7 @@ from transcribe import (
     TranscribeJobRequest,
     TranscribeJobsUpdate,
 )
-from transcribe.aws import AWSTranscriptionService
+from transcribe_aws import AWSTranscriptionService
 
 from tests.helpers import Bunch
 
@@ -45,7 +44,9 @@ class TranscribeTestFixture:
     requests: List[TranscribeJobRequest] = field(default_factory=lambda: [])
     get_job_calls: List[AwsTranscribeGetJobCall] = field(default_factory=lambda: [])
     list_jobs_calls: List[AwsTranscribeListJobsCall] = field(default_factory=lambda: [])
-    expected_on_update_calls: List[TranscribeJobsUpdate] = field(default_factory=lambda: [])
+    expected_on_update_calls: List[TranscribeJobsUpdate] = field(
+        default_factory=lambda: []
+    )
     expected_result: TranscribeBatchResult = field(
         default_factory=lambda: TranscribeBatchResult()
     )
@@ -56,9 +57,6 @@ TEST_AWS_REGION = "fake_aws_region"
 
 
 def create_service(mock_boto3_client) -> Tuple[AWSTranscriptionService, Any, Any]:
-    os.environ["AWS_ACCESS_KEY_ID"] = "fake_aws_access_key_id"
-    os.environ["AWS_SECRET_ACCESS_KEY"] = "fake_aws_secret_access_key"
-    os.environ["AWS_REGION"] = TEST_AWS_REGION
     mock_s3_client = Bunch(upload_file=Mock())
     mock_transcribe_client = Bunch(
         get_transcription_job=Mock(),
@@ -76,8 +74,17 @@ def create_service(mock_boto3_client) -> Tuple[AWSTranscriptionService, Any, Any
         )
 
     mock_boto3_client.side_effect = return_clients
+    service = AWSTranscriptionService()
+    service.init_service(
+        config={
+            "AWS_REGION": TEST_AWS_REGION,
+            "AWS_SECRET_ACCESS_KEY": "fake_aws_secret_access_key",
+            "AWS_ACCESS_KEY_ID": "fake_aws_access_key_id",
+            "AWS_S3_BUCKET": TEST_TRANSCRIBE_SOURCE_BUCKET,
+        }
+    )
     return (
-        AWSTranscriptionService(TEST_TRANSCRIBE_SOURCE_BUCKET),
+        service,
         mock_s3_client,
         mock_transcribe_client,
     )
@@ -145,5 +152,7 @@ def run_transcribe_test(mock_boto3_client, fixture: TranscribeTestFixture):
         )
         assert result.to_dict() == fixture.expected_result.to_dict()
         if fixture.expected_on_update_calls:
-            expected_on_update_calls = [call(u) for u in fixture.expected_on_update_calls]
+            expected_on_update_calls = [
+                call(u) for u in fixture.expected_on_update_calls
+            ]
             spy_on_update.assert_has_calls(expected_on_update_calls)

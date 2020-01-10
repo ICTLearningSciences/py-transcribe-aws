@@ -14,10 +14,12 @@ from boto3_type_annotations.transcribe import Client as TranscribeClient
 from transcribe import (
     copy_shallow,
     require_env,
+    register_transcription_service_factory,
     TranscribeBatchResult,
     TranscribeJobRequest,
     TranscribeJobsUpdate,
     TranscribeJobStatus,
+    TranscriptionService,
 )
 
 _TRANSCRIBE_JOB_STATUS_BY_AWS_STATUS: Dict[str, TranscribeJobStatus] = {
@@ -69,29 +71,7 @@ def _s3_file_exists(s3: S3Client, bucket: str, key: str) -> bool:
     return True
 
 
-class AWSTranscriptionService:
-    def __init__(
-        self,
-        s3_bucket: str,
-        aws_access_key_id: str = "",
-        aws_secret_access_key: str = "",
-        aws_region: str = "",
-        s3_root_path: str = "",
-    ):
-        self.aws_region = aws_region or require_env("AWS_REGION", aws_region)
-        self.s3_bucket = s3_bucket
-        self.s3_root_path = os.environ.get("S3_ROOT_PATH", "transcribe-source")
-        self.s3_client = _create_s3_client(
-            aws_region=self.aws_region,
-            aws_access_key_id=aws_access_key_id,
-            aws_secret_access_key=aws_secret_access_key,
-        )
-        self.transcribe_client = _create_transcribe_client(
-            aws_region=self.aws_region,
-            aws_access_key_id=aws_access_key_id,
-            aws_secret_access_key=aws_secret_access_key,
-        )
-
+class AWSTranscriptionService(TranscriptionService):
     def _get_batch_status(self, batch_id: str) -> List[Dict[str, Any]]:
         result: List[Dict[str, Any]] = []
         cur_result_page = self.transcribe_client.list_transcription_jobs(
@@ -127,6 +107,32 @@ class AWSTranscriptionService:
 
     def get_s3_path(self, source_file: str, id: str) -> str:
         return f"{self.s3_root_path}/{id.lower()}{os.path.splitext(source_file)[1]}"
+
+    def init_service(self, config: Dict[str, Any] = {}, **kwargs):
+        self.aws_region = config.get("AWS_REGION") or require_env("AWS_REGION")
+        self.s3_bucket = config.get("AWS_S3_BUCKET") or require_env(
+            "TRANSCRIBE_AWS_S3_BUCKET"
+        )
+        self.s3_root_path = config.get(
+            "S3_ROOT_PATH",
+            os.environ.get("TRANSCRIBE_AWS_S3_ROOT_PATH", "transcribe-source"),
+        )
+        aws_access_key_id = config.get("AWS_ACCESS_KEY_ID") or require_env(
+            "AWS_ACCESS_KEY_ID"
+        )
+        aws_secret_access_key = config.get("AWS_SECRET_ACCESS_KEY") or require_env(
+            "AWS_SECRET_ACCESS_KEY"
+        )
+        self.s3_client = _create_s3_client(
+            aws_region=self.aws_region,
+            aws_access_key_id=aws_access_key_id,
+            aws_secret_access_key=aws_secret_access_key,
+        )
+        self.transcribe_client = _create_transcribe_client(
+            aws_region=self.aws_region,
+            aws_access_key_id=aws_access_key_id,
+            aws_secret_access_key=aws_secret_access_key,
+        )
 
     def transcribe(
         self,
@@ -201,3 +207,6 @@ class AWSTranscriptionService:
                 except Exception as ex:
                     logging.exception(f"update handler raise exception: {ex}")
         return result
+
+
+register_transcription_service_factory("transcribe_aws", AWSTranscriptionService)

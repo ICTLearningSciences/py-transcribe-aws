@@ -5,7 +5,7 @@ from __future__ import print_function
 # from botocore.exceptions import ClientError
 # from boto3_type_annotations.s3 import Client as S3Client
 
-from transcribe.aws import create_s3_client, s3_file_exists
+from transcribe_aws import create_s3_client, s3_file_exists
 
 print("HERE IN TEST!")
 s3 = create_s3_client()
