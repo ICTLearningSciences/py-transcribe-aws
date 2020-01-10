@@ -4,4 +4,4 @@ boto3_type_annotations==0.3.1
 PyYAML==5.1.2
 requests==2.22.0
 uuid==1.30
-git+https://github.com/ictlearningsciences/py-transcribe.git@1.0.0-alpha.5#egg=transcribe
+git+https://github.com/ictlearningsciences/py-transcribe.git@1.0.0-alpha.6#egg=transcribe
