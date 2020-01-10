@@ -1,0 +1,18 @@
+include README.md
+include CHANGES.rst
+include MANIFEST.in
+include LICENSE
+include *.cfg
+include *.ini
+include *.py
+include *.rst
+include *.txt
+include *.typed
+include *.yml
+include *.yaml
+recursive-include bin   *.py *.bash *.sh
+recursive-include transcribe_aws *.py
+recursive-include py.requirements  *.txt
+
+prune .venv*
+prune **/__pycache__

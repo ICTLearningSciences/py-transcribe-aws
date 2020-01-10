@@ -1,0 +1,43 @@
+version: 2.1
+executors:
+  python:
+    docker:
+      - image: circleci/python:3.7.3
+jobs:
+  test-format:
+    executor: python
+    steps:
+      - checkout
+      - run:
+          name: Test format
+          command: make test-format
+  test-lint:
+    executor: python
+    steps:
+      - checkout
+      - run:
+          name: Test lint
+          command: make test-lint
+  test-types:
+    executor: python
+    steps:
+      - checkout
+      - run:
+          name: Test types
+          command: make test-types
+  test:
+    executor: python
+    steps:
+      - checkout
+      - run:
+          name: Run tests
+          command: make test
+workflows:
+  test:
+    jobs:
+      - test-format
+      - test-lint
+      - test-types
+      - test
+
+
