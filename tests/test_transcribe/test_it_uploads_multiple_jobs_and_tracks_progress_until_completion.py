@@ -314,7 +314,6 @@ from .helpers import (
                         ),
                         idsUpdated=["b1-m1-u3"],
                     ),
-
                     TranscribeJobsUpdate(
                         result=TranscribeBatchResult(
                             transcribeJobsById={

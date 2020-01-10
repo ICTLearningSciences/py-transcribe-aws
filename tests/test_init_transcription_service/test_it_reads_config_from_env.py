@@ -5,12 +5,8 @@ import pytest
 
 from transcribe import init_transcription_service, TranscriptionService
 
-TEST_SERVICE_ENV = {
-    "AWS_REGION": "fake-region",
-    "TRANSCRIBE_AWS_S3_BUCKET": "fake-bucket",
-    "AWS_ACCESS_KEY_ID": "fake-access-key-id",
-    "AWS_SECRET_ACCESS_KEY": "fake-secret-access-key",
-}
+from .helpers import TEST_SERVICE_ENV
+
 
 @pytest.fixture(autouse=True)
 def after_each_clear_env():
@@ -24,9 +20,7 @@ def after_each_clear_env():
 
 @patch("boto3.client")
 def test_it_reads_config_from_env(mock_boto3_client):
-    service = init_transcription_service(
-        module_path="transcribe_aws"
-    )
+    service = init_transcription_service(module_path="transcribe_aws")
     assert isinstance(service, TranscriptionService)
     mock_boto3_client.assert_any_call(
         "s3",

@@ -4,7 +4,7 @@ from .helpers import TEST_SERVICE_CONFIG
 
 
 @patch("boto3.client")
-def test_it_initializes_from_the_module_path(mock_boto3_client):
+def test_it_creates_a_service_instance_for_module_path(mock_boto3_client):
     service = init_transcription_service(
         module_path="transcribe_aws", config=TEST_SERVICE_CONFIG
     )

@@ -11,7 +11,7 @@ $(VENV):
 
 .PHONY: format
 format: $(VENV)
-	$(VENV)/bin/black transcribe_aws
+	$(VENV)/bin/black transcribe_aws tests
 
 PHONY: test
 test: $(VENV)
@@ -22,7 +22,7 @@ test-all: test-format test-lint test-types test
 
 .PHONY: test-format
 test-format: $(VENV)
-	$(VENV)/bin/black --check transcribe_aws
+	$(VENV)/bin/black --check transcribe_aws tests
 
 .PHONY: test-lint
 test-lint: $(VENV)

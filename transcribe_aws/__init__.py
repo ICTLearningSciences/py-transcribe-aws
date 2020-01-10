@@ -110,7 +110,7 @@ class AWSTranscriptionService(TranscriptionService):
 
     def init_service(self, config: Dict[str, Any] = {}, **kwargs):
         self.aws_region = config.get("AWS_REGION") or require_env("AWS_REGION")
-        self.s3_bucket = config.get("AWS_S3_BUCKET") or require_env(
+        self.s3_bucket = config.get("TRANSCRIBE_AWS_S3_BUCKET") or require_env(
             "TRANSCRIBE_AWS_S3_BUCKET"
         )
         self.s3_root_path = config.get(

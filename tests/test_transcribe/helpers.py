@@ -4,11 +4,7 @@ from typing import Any, Dict, List, Tuple
 from unittest.mock import call, Mock
 from uuid import uuid1
 
-from transcribe import (
-    TranscribeBatchResult,
-    TranscribeJobRequest,
-    TranscribeJobsUpdate,
-)
+from transcribe import TranscribeBatchResult, TranscribeJobRequest, TranscribeJobsUpdate
 from transcribe_aws import AWSTranscriptionService
 
 from tests.helpers import Bunch
@@ -80,14 +76,10 @@ def create_service(mock_boto3_client) -> Tuple[AWSTranscriptionService, Any, Any
             "AWS_REGION": TEST_AWS_REGION,
             "AWS_SECRET_ACCESS_KEY": "fake_aws_secret_access_key",
             "AWS_ACCESS_KEY_ID": "fake_aws_access_key_id",
-            "AWS_S3_BUCKET": TEST_TRANSCRIBE_SOURCE_BUCKET,
+            "TRANSCRIBE_AWS_S3_BUCKET": TEST_TRANSCRIBE_SOURCE_BUCKET,
         }
     )
-    return (
-        service,
-        mock_s3_client,
-        mock_transcribe_client,
-    )
+    return (service, mock_s3_client, mock_transcribe_client)
 
 
 def run_transcribe_test(mock_boto3_client, fixture: TranscribeTestFixture):

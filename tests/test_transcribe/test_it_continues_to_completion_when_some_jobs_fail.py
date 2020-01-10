@@ -106,7 +106,7 @@ from .helpers import (
                                 },
                             ]
                         }
-                    )
+                    ),
                 ],
                 get_job_calls=[
                     AwsTranscribeGetJobCall(
@@ -263,7 +263,7 @@ from .helpers import (
                                 ),
                             }
                         ),
-                    )
+                    ),
                 ],
             )
         )
