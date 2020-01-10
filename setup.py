@@ -17,7 +17,7 @@ packages = find_packages()
 requirements = _read_dependencies()
 
 setup(
-    name="transcribe",
+    name="transcribe_aws",
     version="1.0.0",
     author_email="larrykirschner@gmail.com",
     description="framework for synchronous batch speech-to-text transcription using backends like AWS, Watson, etc.",
