@@ -1,9 +1,3 @@
-PWD=$(shell pwd)
-PROJECT_ROOT?=$(shell git rev-parse --show-toplevel 2> /dev/null)
-WATSON_CREDENTIALS=secrets/watson_credentials.txt
-WATSON_USERNAME?=$(shell if [ -f $(WATSON_CREDENTIALS) ]; then head -n 1 $(WATSON_CREDENTIALS); else echo ""; fi)
-WATSON_PASSWORD?=$(shell if [ -f $(WATSON_CREDENTIALS) ]; then tail -n 1 $(WATSON_CREDENTIALS); else echo ""; fi)
-
 # virtualenv used for pytest
 VENV=.venv
 $(VENV):
@@ -32,17 +26,10 @@ test-lint: $(VENV)
 test-types: $(VENV)
 	. $(VENV)/bin/activate && mypy transcribe_aws
 
-$(WATSON_CREDENTIALS):
-	@echo "SET_USERNAME_HERE" > $(WATSON_CREDENTIALS)
-	@echo "SET_PASSWORD_HERE" >> $(WATSON_CREDENTIALS)
-	chmod 600 $(WATSON_CREDENTIALS)
-
 # Removes all mentor files from the local file system
 .PHONY clean:
 clean:
 	rm -rf .venv htmlcov .coverage 
-
-
 
 .PHONY: venv-create
 venv-create: virtualenv-installed
@@ -51,4 +38,4 @@ venv-create: virtualenv-installed
 	$(VENV)/bin/pip install -r ./requirements.test.txt
 
 virtualenv-installed:
-	$(PROJECT_ROOT)/bin/virtualenv_ensure_installed.sh
+	./bin/virtualenv_ensure_installed.sh
