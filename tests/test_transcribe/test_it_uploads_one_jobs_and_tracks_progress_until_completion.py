@@ -23,10 +23,9 @@ from .helpers import (
     [
         (
             TranscribeTestFixture(
+                batch_id="b1",
                 requests=[
-                    TranscribeJobRequest(
-                        batchId="b1", jobId="m1-u1", sourceFile="/audio/m1/u1.wav"
-                    )
+                    TranscribeJobRequest(jobId="m1-u1", sourceFile="/audio/m1/u1.wav")
                 ],
                 list_jobs_calls=[
                     AwsTranscribeListJobsCall(

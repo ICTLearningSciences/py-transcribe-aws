@@ -3,4 +3,4 @@ boto3==1.10.42
 boto3_type_annotations==0.3.1
 requests==2.22.0
 uuid==1.30
-transcribe @ git+https://github.com/ictlearningsciences/py-transcribe.git@1.0.0-alpha.9#egg=transcribe
+transcribe @ git+https://github.com/ictlearningsciences/py-transcribe.git@1.0.0-alpha.10#egg=transcribe

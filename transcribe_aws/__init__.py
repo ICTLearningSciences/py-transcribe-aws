@@ -12,8 +12,8 @@ from boto3_type_annotations.s3 import Client as S3Client
 from boto3_type_annotations.transcribe import Client as TranscribeClient
 
 from transcribe import (
-    change_batch_id,
     copy_shallow,
+    requests_to_job_batch,
     require_env,
     register_transcription_service_factory,
     TranscribeBatchResult,
@@ -145,31 +145,31 @@ class AWSTranscriptionService(TranscriptionService):
     ) -> TranscribeBatchResult:
         batch_id = batch_id or str(uuid1())
         logging.info(f"transcribe: assigning batch id {batch_id} to all jobs")
-        request_list = change_batch_id(batch_id, transcribe_requests)
+        jobs = requests_to_job_batch(batch_id, transcribe_requests)
         result = TranscribeBatchResult(
-            transcribeJobsById={r.get_fq_id(): r.to_job() for r in request_list}
+            transcribeJobsById={j.get_fq_id(): j for j in jobs}
         )
-        for i, r in enumerate(request_list):
-            item_s3_path = self.get_s3_path(r.sourceFile, r.get_fq_id())
+        for i, j in enumerate(jobs):
+            item_s3_path = self.get_s3_path(j.sourceFile, j.get_fq_id())
             logging.info(
-                f"transcribe [{i + 1}/{len(request_list)}] uploading audio to s3 bucket {self.s3_bucket_source} and path {item_s3_path}"
+                f"transcribe [{i + 1}/{len(jobs)}] uploading audio to s3 bucket {self.s3_bucket_source} and path {item_s3_path}"
             )
             self.s3_client.upload_file(
-                r.sourceFile,
+                j.sourceFile,
                 self.s3_bucket_source,
                 item_s3_path,
                 ExtraArgs={"ACL": "public-read"},
             )
             logging.info(
-                f"transcribe [{i + 1}/{len(request_list)}] starting job with name {r.get_fq_id()}"
+                f"transcribe [{i + 1}/{len(jobs)}] starting job with name {j.get_fq_id()}"
             )
             self.transcribe_client.start_transcription_job(
-                TranscriptionJobName=r.get_fq_id(),
-                LanguageCode=r.get_language_code(),
+                TranscriptionJobName=j.get_fq_id(),
+                LanguageCode=j.languageCode,
                 Media={
                     "MediaFileUri": f"https://s3.{self.aws_region}.amazonaws.com/{self.s3_bucket_source}/{item_s3_path}"
                 },
-                MediaFormat=r.get_media_format(),
+                MediaFormat=j.mediaFormat,
             )
         while result.has_any_unresolved():
             if poll_interval > 0:
@@ -201,7 +201,7 @@ class AWSTranscriptionService(TranscriptionService):
                     logging.exception(f"failed to handle update for {ju}: {ex}")
             summary = result.summary()
             logging.info(
-                f"transcribe [{summary.get_count_completed()}/{len(request_list)}] completed. Statuses [SUCCEEDED: {summary.get_count(TranscribeJobStatus.SUCCEEDED)}, FAILED: {summary.get_count(TranscribeJobStatus.FAILED)}, QUEUED: {summary.get_count(TranscribeJobStatus.QUEUED)}, IN_PROGRESS: {summary.get_count(TranscribeJobStatus.IN_PROGRESS)}]."
+                f"transcribe [{summary.get_count_completed()}/{len(jobs)}] completed. Statuses [SUCCEEDED: {summary.get_count(TranscribeJobStatus.SUCCEEDED)}, FAILED: {summary.get_count(TranscribeJobStatus.FAILED)}, QUEUED: {summary.get_count(TranscribeJobStatus.QUEUED)}, IN_PROGRESS: {summary.get_count(TranscribeJobStatus.IN_PROGRESS)}]."
             )
             if on_update and len(idsUpdated) > 0:
                 assert on_update is not None

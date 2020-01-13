@@ -90,7 +90,8 @@ def run_transcribe_test(mock_boto3_client, fixture: TranscribeTestFixture):
     expected_upload_file_calls = []
     expected_start_transcription_job_calls = []
     for r in fixture.requests:
-        input_s3_path = transcribe_service.get_s3_path(r.sourceFile, r.get_fq_id())
+        fqid = f"{batch_id}-{r.jobId}"
+        input_s3_path = transcribe_service.get_s3_path(r.sourceFile, fqid)
         expected_upload_file_calls.append(
             call(
                 r.sourceFile,
@@ -101,7 +102,7 @@ def run_transcribe_test(mock_boto3_client, fixture: TranscribeTestFixture):
         )
         expected_start_transcription_job_calls.append(
             call(
-                TranscriptionJobName=r.get_fq_id(),
+                TranscriptionJobName=fqid,
                 Media={
                     "MediaFileUri": f"https://s3.{TEST_AWS_REGION}.amazonaws.com/{TEST_TRANSCRIBE_SOURCE_BUCKET}/{input_s3_path}"
                 },
