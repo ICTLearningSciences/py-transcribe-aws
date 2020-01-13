@@ -12,6 +12,7 @@ from boto3_type_annotations.s3 import Client as S3Client
 from boto3_type_annotations.transcribe import Client as TranscribeClient
 
 from transcribe import (
+    change_batch_id,
     copy_shallow,
     require_env,
     register_transcription_service_factory,
@@ -92,7 +93,9 @@ class AWSTranscriptionService(TranscriptionService):
         return result
 
     def _load_transcript(self, aws_job_name: str) -> str:
-        aws_job = self.transcribe_client.get_transcription_job(aws_job_name)
+        aws_job = self.transcribe_client.get_transcription_job(
+            TranscriptionJobName=aws_job_name
+        )
         if "TranscriptionJob" not in aws_job:
             raise Exception("Aws result has no 'TranscriptionJob'")
         if "Transcript" not in aws_job["TranscriptionJob"]:
@@ -110,12 +113,11 @@ class AWSTranscriptionService(TranscriptionService):
 
     def init_service(self, config: Dict[str, Any] = {}, **kwargs):
         self.aws_region = config.get("AWS_REGION") or require_env("AWS_REGION")
-        self.s3_bucket = config.get("TRANSCRIBE_AWS_S3_BUCKET") or require_env(
-            "TRANSCRIBE_AWS_S3_BUCKET"
-        )
+        self.s3_bucket_source = config.get(
+            "TRANSCRIBE_AWS_S3_BUCKET_SOURCE"
+        ) or require_env("TRANSCRIBE_AWS_S3_BUCKET_SOURCE")
         self.s3_root_path = config.get(
-            "S3_ROOT_PATH",
-            os.environ.get("TRANSCRIBE_AWS_S3_ROOT_PATH", ""),
+            "S3_ROOT_PATH", os.environ.get("TRANSCRIBE_AWS_S3_ROOT_PATH", "")
         )
         aws_access_key_id = config.get("AWS_ACCESS_KEY_ID") or require_env(
             "AWS_ACCESS_KEY_ID"
@@ -142,26 +144,30 @@ class AWSTranscriptionService(TranscriptionService):
         on_update: Optional[Callable[[TranscribeJobsUpdate], None]] = None,
     ) -> TranscribeBatchResult:
         batch_id = batch_id or str(uuid1())
+        logging.info(f"transcribe: assigning batch id {batch_id} to all jobs")
+        request_list = change_batch_id(batch_id, transcribe_requests)
         result = TranscribeBatchResult(
-            transcribeJobsById={r.get_fq_id(): r.to_job() for r in transcribe_requests}
+            transcribeJobsById={r.get_fq_id(): r.to_job() for r in request_list}
         )
-        request_list = [r for r in transcribe_requests]
         for i, r in enumerate(request_list):
             item_s3_path = self.get_s3_path(r.sourceFile, r.get_fq_id())
             logging.info(
-                f"transcribe [{i + 1}/{len(request_list)}] uploading audio to s3 bucket {self.s3_bucket} and path {item_s3_path}"
+                f"transcribe [{i + 1}/{len(request_list)}] uploading audio to s3 bucket {self.s3_bucket_source} and path {item_s3_path}"
             )
             self.s3_client.upload_file(
                 r.sourceFile,
-                self.s3_bucket,
+                self.s3_bucket_source,
                 item_s3_path,
                 ExtraArgs={"ACL": "public-read"},
+            )
+            logging.info(
+                f"transcribe [{i + 1}/{len(request_list)}] starting job with name {r.get_fq_id()}"
             )
             self.transcribe_client.start_transcription_job(
                 TranscriptionJobName=r.get_fq_id(),
                 LanguageCode=r.get_language_code(),
                 Media={
-                    "MediaFileUri": f"https://s3.{self.aws_region}.amazonaws.com/{self.s3_bucket}/{item_s3_path}"
+                    "MediaFileUri": f"https://s3.{self.aws_region}.amazonaws.com/{self.s3_bucket_source}/{item_s3_path}"
                 },
                 MediaFormat=r.get_media_format(),
             )

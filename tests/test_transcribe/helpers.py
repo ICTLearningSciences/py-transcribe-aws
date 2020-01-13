@@ -2,7 +2,6 @@ from dataclasses import dataclass, field
 import requests_mock
 from typing import Any, Dict, List, Tuple
 from unittest.mock import call, Mock
-from uuid import uuid1
 
 from transcribe import TranscribeBatchResult, TranscribeJobRequest, TranscribeJobsUpdate
 from transcribe_aws import AWSTranscriptionService
@@ -36,7 +35,7 @@ class AwsTranscribeListJobsCall:
 
 @dataclass
 class TranscribeTestFixture:
-    default_batch_id: str = ""
+    batch_id: str = "b1"
     requests: List[TranscribeJobRequest] = field(default_factory=lambda: [])
     get_job_calls: List[AwsTranscribeGetJobCall] = field(default_factory=lambda: [])
     list_jobs_calls: List[AwsTranscribeListJobsCall] = field(default_factory=lambda: [])
@@ -76,7 +75,7 @@ def create_service(mock_boto3_client) -> Tuple[AWSTranscriptionService, Any, Any
             "AWS_REGION": TEST_AWS_REGION,
             "AWS_SECRET_ACCESS_KEY": "fake_aws_secret_access_key",
             "AWS_ACCESS_KEY_ID": "fake_aws_access_key_id",
-            "TRANSCRIBE_AWS_S3_BUCKET": TEST_TRANSCRIBE_SOURCE_BUCKET,
+            "TRANSCRIBE_AWS_S3_BUCKET_SOURCE": TEST_TRANSCRIBE_SOURCE_BUCKET,
         }
     )
     return (service, mock_s3_client, mock_transcribe_client)
@@ -86,7 +85,7 @@ def run_transcribe_test(mock_boto3_client, fixture: TranscribeTestFixture):
     transcribe_service, mock_s3_client, mock_transcribe_client = create_service(
         mock_boto3_client
     )
-    batch_id = uuid1()
+    batch_id = fixture.batch_id
     spy_on_update = Mock()
     expected_upload_file_calls = []
     expected_start_transcription_job_calls = []
