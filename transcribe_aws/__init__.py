@@ -115,7 +115,7 @@ class AWSTranscriptionService(TranscriptionService):
         )
         self.s3_root_path = config.get(
             "S3_ROOT_PATH",
-            os.environ.get("TRANSCRIBE_AWS_S3_ROOT_PATH", "transcribe-source"),
+            os.environ.get("TRANSCRIBE_AWS_S3_ROOT_PATH", ""),
         )
         aws_access_key_id = config.get("AWS_ACCESS_KEY_ID") or require_env(
             "AWS_ACCESS_KEY_ID"
@@ -149,7 +149,7 @@ class AWSTranscriptionService(TranscriptionService):
         for i, r in enumerate(request_list):
             item_s3_path = self.get_s3_path(r.sourceFile, r.get_fq_id())
             logging.info(
-                f"transcribe [{i + 1}/{len(request_list)}] uploading audio to s3 {item_s3_path}"
+                f"transcribe [{i + 1}/{len(request_list)}] uploading audio to s3 bucket {self.s3_bucket} and path {item_s3_path}"
             )
             self.s3_client.upload_file(
                 r.sourceFile,
