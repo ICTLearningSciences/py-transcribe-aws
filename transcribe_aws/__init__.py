@@ -96,16 +96,19 @@ class AWSTranscriptionService(TranscriptionService):
         aws_job = self.transcribe_client.get_transcription_job(
             TranscriptionJobName=aws_job_name
         )
-        if "TranscriptionJob" not in aws_job:
-            raise Exception("Aws result has no 'TranscriptionJob'")
-        if "Transcript" not in aws_job["TranscriptionJob"]:
-            raise Exception("Aws result has no 'Transcript'")
-        if "TranscriptFileUri" not in aws_job["TranscriptionJob"]["Transcript"]:
-            raise Exception("Aws job Transcript has no 'TranscriptFileUrl'")
-        url = aws_job["TranscriptionJob"]["Transcript"]["TranscriptFileUri"]
+        url = aws_job.get("TranscriptionJob", {}).get("Transcript", {}).get("TranscriptFileUri", "")
+        if not url:
+            raise Exception(f"unable to parse url for job '{aws_job_name}': {aws_job}")
         transcript_res = requests.get(url)
         transcript_res.raise_for_status()
-        transcript = transcript_res.json().get("Transcript")
+        transcript_json = transcript_res.json()
+        transcript = ""
+        try:
+            transcript = transcript_json["results"]["transcripts"][0]["transcript"]
+        except Exception:
+            pass
+        if not transcript:
+            raise Exception(f"unable to parse transcript for job '{aws_job_name} and url {url}': {transcript_json}")
         return transcript
 
     def get_s3_path(self, source_file: str, id: str) -> str:

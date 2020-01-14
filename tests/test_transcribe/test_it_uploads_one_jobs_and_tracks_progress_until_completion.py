@@ -91,7 +91,13 @@ from .helpers import (
                             }
                         },
                         transcribe_url_response={
-                            "Transcript": "some transcript for mentor m1 and utterance u1"
+                            "results": {
+                                "transcripts": [
+                                    {
+                                        "transcript": "some transcript for mentor m1 and utterance u1"
+                                    }
+                                ]
+                            }
                         },
                     )
                 ],

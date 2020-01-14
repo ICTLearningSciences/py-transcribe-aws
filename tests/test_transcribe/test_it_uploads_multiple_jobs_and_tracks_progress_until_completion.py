@@ -133,7 +133,13 @@ from .helpers import (
                             }
                         },
                         transcribe_url_response={
-                            "Transcript": "some transcript for mentor m1 and utterance u1"
+                            "results": {
+                                "transcripts": [
+                                    {
+                                        "transcript": "some transcript for mentor m1 and utterance u1"
+                                    }
+                                ]
+                            }
                         },
                     ),
                     AwsTranscribeGetJobCall(
@@ -147,7 +153,13 @@ from .helpers import (
                             }
                         },
                         transcribe_url_response={
-                            "Transcript": "out of order transcript for mentor m1 and utterance u3"
+                            "results": {
+                                "transcripts": [
+                                    {
+                                        "transcript": "out of order transcript for mentor m1 and utterance u3"
+                                    }
+                                ]
+                            }
                         },
                     ),
                     AwsTranscribeGetJobCall(
@@ -161,7 +173,13 @@ from .helpers import (
                             }
                         },
                         transcribe_url_response={
-                            "Transcript": "last transcript for mentor m1 and utterance u2"
+                            "results": {
+                                "transcripts": [
+                                    {
+                                        "transcript": "last transcript for mentor m1 and utterance u2"
+                                    }
+                                ]
+                            }
                         },
                     ),
                 ],

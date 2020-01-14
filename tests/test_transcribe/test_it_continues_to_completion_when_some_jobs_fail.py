@@ -115,7 +115,13 @@ from .helpers import (
                             }
                         },
                         transcribe_url_response={
-                            "Transcript": "transcript for mentor m1 and utterance u3 even though other jobs failed"
+                            "results": {
+                                "transcripts": [
+                                    {
+                                        "transcript": "transcript for mentor m1 and utterance u3 even though other jobs failed"
+                                    }
+                                ]
+                            }
                         },
                     )
                 ],
