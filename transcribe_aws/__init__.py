@@ -2,7 +2,7 @@ import logging
 import requests
 import os
 from typing import Any, Callable, Dict, Iterable, List, Optional
-from time import sleep
+import time
 
 import boto3
 from uuid import uuid1
@@ -29,6 +29,9 @@ _TRANSCRIBE_JOB_STATUS_BY_AWS_STATUS: Dict[str, TranscribeJobStatus] = {
     "FAILED": TranscribeJobStatus.FAILED,
     "COMPLETED": TranscribeJobStatus.SUCCEEDED,
 }
+
+DEFAULT_POLL_INTERVAL: float = 5.0
+DEFAULT_LIMIT_EXCEEDED_INTERVAL: float = 20.0
 
 
 def _create_s3_client(
@@ -144,13 +147,17 @@ class AWSTranscriptionService(TranscriptionService):
             aws_access_key_id=aws_access_key_id,
             aws_secret_access_key=aws_secret_access_key,
         )
+        self.poll_interval = config.get("POLL_INTERVAL", DEFAULT_POLL_INTERVAL)
+        self.limit_exceeded_interval = config.get(
+            "LIMIT_EXCEEDED_INTERVAL", DEFAULT_LIMIT_EXCEEDED_INTERVAL
+        )
 
     def transcribe(
         self,
         transcribe_requests: Iterable[TranscribeJobRequest],
         batch_id: str = "",
-        poll_interval=5,
         on_update: Optional[Callable[[TranscribeJobsUpdate], None]] = None,
+        **kwargs,
     ) -> TranscribeBatchResult:
         batch_id = batch_id or str(uuid1())
         logging.info(f"transcribe: assigning batch id {batch_id} to all jobs")
@@ -181,8 +188,8 @@ class AWSTranscriptionService(TranscriptionService):
                 MediaFormat=j.mediaFormat,
             )
         while result.has_any_unresolved():
-            if poll_interval > 0:
-                sleep(poll_interval)
+            if self.poll_interval > 0:
+                time.sleep(self.poll_interval)
             job_updates = self._get_batch_status(batch_id)
             idsUpdated: List[str] = []
             result = copy_shallow(result)

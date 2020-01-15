@@ -1,12 +1,18 @@
 from dataclasses import dataclass, field
 import requests_mock
-from typing import Any, Dict, List, Tuple
-from unittest.mock import call, Mock
+from typing import Any, Callable, Dict, List, Optional, Tuple
+from unittest.mock import call, patch, Mock
 
 from transcribe import TranscribeBatchResult, TranscribeJobRequest, TranscribeJobsUpdate
 from transcribe_aws import AWSTranscriptionService
 
 from tests.helpers import Bunch
+
+
+@dataclass
+class AwsTranscribeStartJobCall:
+    expected_call_args: Dict[str, Any] = field(default_factory=lambda: {})
+    expected_side_effect: Optional[Callable[[], None]] = None
 
 
 @dataclass
@@ -45,6 +51,7 @@ class TranscribeTestFixture:
     expected_result: TranscribeBatchResult = field(
         default_factory=lambda: TranscribeBatchResult()
     )
+    expected_sleep_calls: List[float] = field(default_factory=lambda: [])
 
 
 TEST_TRANSCRIBE_SOURCE_BUCKET = "test_transcribe_source_bucket"
@@ -82,69 +89,74 @@ def create_service(mock_boto3_client) -> Tuple[AWSTranscriptionService, Any, Any
 
 
 def run_transcribe_test(mock_boto3_client, fixture: TranscribeTestFixture):
-    transcribe_service, mock_s3_client, mock_transcribe_client = create_service(
-        mock_boto3_client
-    )
-    batch_id = fixture.batch_id
-    spy_on_update = Mock()
-    expected_upload_file_calls = []
-    expected_start_transcription_job_calls = []
-    for r in fixture.requests:
-        fqid = f"{batch_id}-{r.jobId}"
-        input_s3_path = transcribe_service.get_s3_path(r.sourceFile, fqid)
-        expected_upload_file_calls.append(
-            call(
-                r.sourceFile,
-                TEST_TRANSCRIBE_SOURCE_BUCKET,
-                input_s3_path,
-                ExtraArgs={"ACL": "public-read"},
+    with patch("time.sleep") as mock_sleep:
+        transcribe_service, mock_s3_client, mock_transcribe_client = create_service(
+            mock_boto3_client
+        )
+        batch_id = fixture.batch_id
+        spy_on_update = Mock()
+        expected_upload_file_calls = []
+        expected_start_transcription_job_calls = []
+        for r in fixture.requests:
+            fqid = f"{batch_id}-{r.jobId}"
+            input_s3_path = transcribe_service.get_s3_path(r.sourceFile, fqid)
+            expected_upload_file_calls.append(
+                call(
+                    r.sourceFile,
+                    TEST_TRANSCRIBE_SOURCE_BUCKET,
+                    input_s3_path,
+                    ExtraArgs={"ACL": "public-read"},
+                )
             )
-        )
-        expected_start_transcription_job_calls.append(
-            call(
-                TranscriptionJobName=fqid,
-                Media={
-                    "MediaFileUri": f"https://s3.{TEST_AWS_REGION}.amazonaws.com/{TEST_TRANSCRIBE_SOURCE_BUCKET}/{input_s3_path}"
-                },
-                MediaFormat=r.get_media_format(),
-                LanguageCode=r.get_language_code(),
+            expected_start_transcription_job_calls.append(
+                call(
+                    TranscriptionJobName=fqid,
+                    Media={
+                        "MediaFileUri": f"https://s3.{TEST_AWS_REGION}.amazonaws.com/{TEST_TRANSCRIBE_SOURCE_BUCKET}/{input_s3_path}"
+                    },
+                    MediaFormat=r.get_media_format(),
+                    LanguageCode=r.get_language_code(),
+                )
             )
+        expected_list_jobs_calls = []
+        mock_list_call_responses = []
+        for c in fixture.list_jobs_calls:
+            expected_list_jobs_calls.append(
+                call(JobNameContains=batch_id, NextToken=c.next_token)
+            )
+            mock_list_call_responses.append(c.result)
+        mock_transcribe_client.list_transcription_jobs.side_effect = (
+            mock_list_call_responses
         )
-    expected_list_jobs_calls = []
-    mock_list_call_responses = []
-    for c in fixture.list_jobs_calls:
-        expected_list_jobs_calls.append(
-            call(JobNameContains=batch_id, NextToken=c.next_token)
-        )
-        mock_list_call_responses.append(c.result)
-    mock_transcribe_client.list_transcription_jobs.side_effect = (
-        mock_list_call_responses
-    )
-    expected_get_job_calls = []
-    mock_get_job_responses = []
-    with requests_mock.Mocker() as mock_requests:
-        for c in fixture.get_job_calls:
-            expected_get_job_calls.append(call(TranscriptionJobName=c.name))
-            if c.is_success_result():
-                t_url = c.get_transcription_url()
-                mock_requests.get(t_url, json=c.transcribe_url_response)
-            mock_get_job_responses.append(c.result)
-        mock_transcribe_client.get_transcription_job.side_effect = (
-            mock_get_job_responses
-        )
-        result = transcribe_service.transcribe(
-            fixture.requests,
-            on_update=spy_on_update,
-            batch_id=batch_id,
-            poll_interval=0,
-        )
-        mock_s3_client.upload_file.assert_has_calls(expected_upload_file_calls)
-        mock_transcribe_client.start_transcription_job.assert_has_calls(
-            expected_start_transcription_job_calls
-        )
-        assert result.to_dict() == fixture.expected_result.to_dict()
-        if fixture.expected_on_update_calls:
-            expected_on_update_calls = [
-                call(u) for u in fixture.expected_on_update_calls
-            ]
-            spy_on_update.assert_has_calls(expected_on_update_calls)
+        expected_get_job_calls = []
+        mock_get_job_responses = []
+        with requests_mock.Mocker() as mock_requests:
+            for c in fixture.get_job_calls:
+                expected_get_job_calls.append(call(TranscriptionJobName=c.name))
+                if c.is_success_result():
+                    t_url = c.get_transcription_url()
+                    mock_requests.get(t_url, json=c.transcribe_url_response)
+                mock_get_job_responses.append(c.result)
+            mock_transcribe_client.get_transcription_job.side_effect = (
+                mock_get_job_responses
+            )
+            result = transcribe_service.transcribe(
+                fixture.requests, on_update=spy_on_update, batch_id=batch_id
+            )
+            mock_s3_client.upload_file.assert_has_calls(expected_upload_file_calls)
+            mock_transcribe_client.start_transcription_job.assert_has_calls(
+                expected_start_transcription_job_calls
+            )
+            if fixture.expected_sleep_calls:
+                mock_sleep.assert_has_calls(
+                    [
+                        call(sleep_interval)
+                        for sleep_interval in fixture.expected_sleep_calls
+                    ]
+                )
+            assert result.to_dict() == fixture.expected_result.to_dict()
+            if fixture.expected_on_update_calls:
+                expected_on_update_calls = [
+                    call(u) for u in fixture.expected_on_update_calls
+                ]
+                spy_on_update.assert_has_calls(expected_on_update_calls)

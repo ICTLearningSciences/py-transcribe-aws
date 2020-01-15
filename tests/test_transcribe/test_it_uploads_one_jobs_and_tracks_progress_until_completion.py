@@ -9,6 +9,8 @@ from transcribe import (
     TranscribeJobsUpdate,
 )
 
+from transcribe_aws import DEFAULT_POLL_INTERVAL
+
 from .helpers import (
     run_transcribe_test,
     AwsTranscribeGetJobCall,
@@ -100,6 +102,13 @@ from .helpers import (
                             }
                         },
                     )
+                ],
+                expected_sleep_calls=[
+                    DEFAULT_POLL_INTERVAL,
+                    DEFAULT_POLL_INTERVAL,
+                    DEFAULT_POLL_INTERVAL,
+                    DEFAULT_POLL_INTERVAL,
+                    DEFAULT_POLL_INTERVAL,
                 ],
                 expected_result=TranscribeBatchResult(
                     transcribeJobsById={
