@@ -200,6 +200,7 @@ class AWSTranscriptionService(TranscriptionService):
     ):
         if not any(j.status == TranscribeJobStatus.UPLOADED for j in result.jobs()):
             return result
+        result = copy_shallow(result)
         job_ids_started = []
         try:
             for job in result.jobs():
@@ -215,6 +216,7 @@ class AWSTranscriptionService(TranscriptionService):
                     },
                     MediaFormat=job.mediaFormat,
                 )
+                result.update_job(jid, status=TranscribeJobStatus.QUEUED)
                 job_ids_started.append(jid)
         except BaseException as ex:
             if re.search("limitexceeded", str(ex), re.IGNORECASE):
@@ -223,11 +225,9 @@ class AWSTranscriptionService(TranscriptionService):
                 )
             else:
                 logging.exception(f"exception on start jobs: {ex}")
-        return (
-            self._update_status(result, batch_id, on_update)
-            if job_ids_started
-            else result
-        )
+        if job_ids_started:
+            self._send_on_update(result, job_ids_started, on_update)
+        return result
 
     def _update_status(
         self,
