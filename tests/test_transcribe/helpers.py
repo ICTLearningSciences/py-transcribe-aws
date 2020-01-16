@@ -9,10 +9,19 @@ from transcribe_aws import AWSTranscriptionService
 from tests.helpers import Bunch
 
 
+class FakeLimitExceededException(BaseException):
+    def __init__(self):
+        super().__init__("LimitExceeded (fake)")
+
+
+def raise_limit_exceeded():
+    raise FakeLimitExceededException()
+
+
 @dataclass
 class AwsTranscribeStartJobCall:
-    expected_call_args: Dict[str, Any] = field(default_factory=lambda: {})
-    expected_side_effect: Optional[Callable[[], None]] = None
+    expected_args: Dict[str, Any]
+    side_effect: Optional[Callable[[], None]] = None
 
 
 @dataclass
@@ -45,6 +54,9 @@ class TranscribeTestFixture:
     requests: List[TranscribeJobRequest] = field(default_factory=lambda: [])
     get_job_calls: List[AwsTranscribeGetJobCall] = field(default_factory=lambda: [])
     list_jobs_calls: List[AwsTranscribeListJobsCall] = field(default_factory=lambda: [])
+    override_expected_start_job_calls: List[AwsTranscribeStartJobCall] = field(
+        default_factory=lambda: []
+    )
     expected_on_update_calls: List[TranscribeJobsUpdate] = field(
         default_factory=lambda: []
     )
@@ -96,7 +108,23 @@ def run_transcribe_test(mock_boto3_client, fixture: TranscribeTestFixture):
         batch_id = fixture.batch_id
         spy_on_update = Mock()
         expected_upload_file_calls = []
-        expected_start_transcription_job_calls = []
+        expected_start_transcription_job_calls = (
+            [call(**c.expected_args) for c in fixture.override_expected_start_job_calls]
+            if fixture.override_expected_start_job_calls
+            else []
+        )
+        if fixture.override_expected_start_job_calls:
+            start_transcription_job_side_effects = [
+                sjc.side_effect for sjc in fixture.override_expected_start_job_calls
+            ]
+
+            def _side_effect(*arg, **kwargs):
+                if start_transcription_job_side_effects:
+                    e = start_transcription_job_side_effects.pop(0)
+                    if e:
+                        e()
+
+            mock_transcribe_client.start_transcription_job.side_effect = _side_effect
         for r in fixture.requests:
             fqid = f"{batch_id}-{r.jobId}"
             input_s3_path = transcribe_service.get_s3_path(r.sourceFile, fqid)
@@ -108,16 +136,17 @@ def run_transcribe_test(mock_boto3_client, fixture: TranscribeTestFixture):
                     ExtraArgs={"ACL": "public-read"},
                 )
             )
-            expected_start_transcription_job_calls.append(
-                call(
-                    TranscriptionJobName=fqid,
-                    Media={
-                        "MediaFileUri": f"https://s3.{TEST_AWS_REGION}.amazonaws.com/{TEST_TRANSCRIBE_SOURCE_BUCKET}/{input_s3_path}"
-                    },
-                    MediaFormat=r.get_media_format(),
-                    LanguageCode=r.get_language_code(),
+            if not fixture.override_expected_start_job_calls:
+                expected_start_transcription_job_calls.append(
+                    call(
+                        TranscriptionJobName=fqid,
+                        Media={
+                            "MediaFileUri": f"https://s3.{TEST_AWS_REGION}.amazonaws.com/{TEST_TRANSCRIBE_SOURCE_BUCKET}/{input_s3_path}"
+                        },
+                        MediaFormat=r.get_media_format(),
+                        LanguageCode=r.get_language_code(),
+                    )
                 )
-            )
         expected_list_jobs_calls = []
         mock_list_call_responses = []
         for c in fixture.list_jobs_calls:

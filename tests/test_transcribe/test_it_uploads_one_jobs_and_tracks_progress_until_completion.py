@@ -15,7 +15,10 @@ from .helpers import (
     run_transcribe_test,
     AwsTranscribeGetJobCall,
     AwsTranscribeListJobsCall,
+    AwsTranscribeStartJobCall,
     TranscribeTestFixture,
+    TEST_AWS_REGION,
+    TEST_TRANSCRIBE_SOURCE_BUCKET,
 )
 
 
@@ -28,6 +31,18 @@ from .helpers import (
                 batch_id="b1",
                 requests=[
                     TranscribeJobRequest(jobId="m1-u1", sourceFile="/audio/m1/u1.wav")
+                ],
+                override_expected_start_job_calls=[
+                    AwsTranscribeStartJobCall(
+                        expected_args={
+                            "TranscriptionJobName": "b1-m1-u1",
+                            "LanguageCode": "en-US",
+                            "Media": {
+                                "MediaFileUri": f"https://s3.{TEST_AWS_REGION}.amazonaws.com/{TEST_TRANSCRIBE_SOURCE_BUCKET}/b1-m1-u1.wav"
+                            },
+                            "MediaFormat": "wav",
+                        }
+                    )
                 ],
                 list_jobs_calls=[
                     AwsTranscribeListJobsCall(
@@ -108,7 +123,6 @@ from .helpers import (
                     DEFAULT_POLL_INTERVAL,
                     DEFAULT_POLL_INTERVAL,
                     DEFAULT_POLL_INTERVAL,
-                    DEFAULT_POLL_INTERVAL,
                 ],
                 expected_result=TranscribeBatchResult(
                     transcribeJobsById={
@@ -123,6 +137,20 @@ from .helpers import (
                     }
                 ),
                 expected_on_update_calls=[
+                    TranscribeJobsUpdate(
+                        result=TranscribeBatchResult(
+                            transcribeJobsById={
+                                "b1-m1-u1": TranscribeJob(
+                                    batchId="b1",
+                                    jobId="m1-u1",
+                                    sourceFile="/audio/m1/u1.wav",
+                                    mediaFormat="wav",
+                                    status=TranscribeJobStatus.UPLOADED,
+                                )
+                            }
+                        ),
+                        idsUpdated=["b1-m1-u1"],
+                    ),
                     TranscribeJobsUpdate(
                         result=TranscribeBatchResult(
                             transcribeJobsById={
