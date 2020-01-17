@@ -131,7 +131,8 @@ class AWSTranscriptionService(TranscriptionService):
             "TRANSCRIBE_AWS_S3_BUCKET_SOURCE"
         ) or require_env("TRANSCRIBE_AWS_S3_BUCKET_SOURCE")
         self.s3_root_path = config.get(
-            "S3_ROOT_PATH", os.environ.get("TRANSCRIBE_AWS_S3_ROOT_PATH", "")
+            "TRANSCRIBE_AWS_S3_ROOT_PATH",
+            os.environ.get("TRANSCRIBE_AWS_S3_ROOT_PATH", ""),
         )
         aws_access_key_id = config.get("AWS_ACCESS_KEY_ID") or require_env(
             "AWS_ACCESS_KEY_ID"
