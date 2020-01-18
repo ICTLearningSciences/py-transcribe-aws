@@ -1,4 +1,3 @@
-
 class Bunch:
     """
     Useful for mocking class instances.

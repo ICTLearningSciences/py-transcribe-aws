@@ -23,18 +23,37 @@ from .helpers import (
     [
         (
             TranscribeTestFixture(
+                batch_id="b1",
                 requests=[
-                    TranscribeJobRequest(
-                        batchId="b1", jobId="m1-u1", sourceFile="/audio/m1/u1.wav"
-                    ),
-                    TranscribeJobRequest(
-                        batchId="b1", jobId="m1-u2", sourceFile="/audio/m1/u2.wav"
-                    ),
-                    TranscribeJobRequest(
-                        batchId="b1", jobId="m1-u3", sourceFile="/audio/m1/u3.wav"
-                    ),
+                    TranscribeJobRequest(jobId="m1-u1", sourceFile="/audio/m1/u1.wav"),
+                    TranscribeJobRequest(jobId="m1-u2", sourceFile="/audio/m1/u2.wav"),
+                    TranscribeJobRequest(jobId="m1-u3", sourceFile="/audio/m1/u3.wav"),
                 ],
                 list_jobs_calls=[
+                    AwsTranscribeListJobsCall(
+                        result={
+                            "TranscriptionJobSummaries": [
+                                {
+                                    "TranscriptionJobName": "b1-m1-u1",
+                                    "TranscriptionJobStatus": "QUEUED",
+                                }
+                            ]
+                        }
+                    ),
+                    AwsTranscribeListJobsCall(
+                        result={
+                            "TranscriptionJobSummaries": [
+                                {
+                                    "TranscriptionJobName": "b1-m1-u1",
+                                    "TranscriptionJobStatus": "QUEUED",
+                                },
+                                {
+                                    "TranscriptionJobName": "b1-m1-u2",
+                                    "TranscriptionJobStatus": "QUEUED",
+                                },
+                            ]
+                        }
+                    ),
                     AwsTranscribeListJobsCall(
                         result={
                             "TranscriptionJobSummaries": [
@@ -138,7 +157,13 @@ from .helpers import (
                             }
                         },
                         transcribe_url_response={
-                            "Transcript": "some transcript for mentor m1 and utterance u1"
+                            "results": {
+                                "transcripts": [
+                                    {
+                                        "transcript": "some transcript for mentor m1 and utterance u1"
+                                    }
+                                ]
+                            }
                         },
                     ),
                     AwsTranscribeGetJobCall(
@@ -152,7 +177,13 @@ from .helpers import (
                             }
                         },
                         transcribe_url_response={
-                            "Transcript": "out of order transcript for mentor m1 and utterance u3"
+                            "results": {
+                                "transcripts": [
+                                    {
+                                        "transcript": "out of order transcript for mentor m1 and utterance u3"
+                                    }
+                                ]
+                            }
                         },
                     ),
                     AwsTranscribeGetJobCall(
@@ -166,7 +197,13 @@ from .helpers import (
                             }
                         },
                         transcribe_url_response={
-                            "Transcript": "last transcript for mentor m1 and utterance u2"
+                            "results": {
+                                "transcripts": [
+                                    {
+                                        "transcript": "last transcript for mentor m1 and utterance u2"
+                                    }
+                                ]
+                            }
                         },
                     ),
                 ],
@@ -207,6 +244,146 @@ from .helpers import (
                                     jobId="m1-u1",
                                     sourceFile="/audio/m1/u1.wav",
                                     mediaFormat="wav",
+                                    status=TranscribeJobStatus.UPLOADED,
+                                ),
+                                "b1-m1-u2": TranscribeJob(
+                                    batchId="b1",
+                                    jobId="m1-u2",
+                                    sourceFile="/audio/m1/u2.wav",
+                                    mediaFormat="wav",
+                                    status=TranscribeJobStatus.NONE,
+                                ),
+                                "b1-m1-u3": TranscribeJob(
+                                    batchId="b1",
+                                    jobId="m1-u3",
+                                    sourceFile="/audio/m1/u3.wav",
+                                    mediaFormat="wav",
+                                    status=TranscribeJobStatus.NONE,
+                                ),
+                            }
+                        ),
+                        idsUpdated=["b1-m1-u1"],
+                    ),
+                    TranscribeJobsUpdate(
+                        result=TranscribeBatchResult(
+                            transcribeJobsById={
+                                "b1-m1-u1": TranscribeJob(
+                                    batchId="b1",
+                                    jobId="m1-u1",
+                                    sourceFile="/audio/m1/u1.wav",
+                                    mediaFormat="wav",
+                                    status=TranscribeJobStatus.QUEUED,
+                                ),
+                                "b1-m1-u2": TranscribeJob(
+                                    batchId="b1",
+                                    jobId="m1-u2",
+                                    sourceFile="/audio/m1/u2.wav",
+                                    mediaFormat="wav",
+                                    status=TranscribeJobStatus.NONE,
+                                ),
+                                "b1-m1-u3": TranscribeJob(
+                                    batchId="b1",
+                                    jobId="m1-u3",
+                                    sourceFile="/audio/m1/u3.wav",
+                                    mediaFormat="wav",
+                                    status=TranscribeJobStatus.NONE,
+                                ),
+                            }
+                        ),
+                        idsUpdated=["b1-m1-u1"],
+                    ),
+                    TranscribeJobsUpdate(
+                        result=TranscribeBatchResult(
+                            transcribeJobsById={
+                                "b1-m1-u1": TranscribeJob(
+                                    batchId="b1",
+                                    jobId="m1-u1",
+                                    sourceFile="/audio/m1/u1.wav",
+                                    mediaFormat="wav",
+                                    status=TranscribeJobStatus.QUEUED,
+                                ),
+                                "b1-m1-u2": TranscribeJob(
+                                    batchId="b1",
+                                    jobId="m1-u2",
+                                    sourceFile="/audio/m1/u2.wav",
+                                    mediaFormat="wav",
+                                    status=TranscribeJobStatus.UPLOADED,
+                                ),
+                                "b1-m1-u3": TranscribeJob(
+                                    batchId="b1",
+                                    jobId="m1-u3",
+                                    sourceFile="/audio/m1/u3.wav",
+                                    mediaFormat="wav",
+                                    status=TranscribeJobStatus.NONE,
+                                ),
+                            }
+                        ),
+                        idsUpdated=["b1-m1-u2"],
+                    ),
+                    TranscribeJobsUpdate(
+                        result=TranscribeBatchResult(
+                            transcribeJobsById={
+                                "b1-m1-u1": TranscribeJob(
+                                    batchId="b1",
+                                    jobId="m1-u1",
+                                    sourceFile="/audio/m1/u1.wav",
+                                    mediaFormat="wav",
+                                    status=TranscribeJobStatus.QUEUED,
+                                ),
+                                "b1-m1-u2": TranscribeJob(
+                                    batchId="b1",
+                                    jobId="m1-u2",
+                                    sourceFile="/audio/m1/u2.wav",
+                                    mediaFormat="wav",
+                                    status=TranscribeJobStatus.QUEUED,
+                                ),
+                                "b1-m1-u3": TranscribeJob(
+                                    batchId="b1",
+                                    jobId="m1-u3",
+                                    sourceFile="/audio/m1/u3.wav",
+                                    mediaFormat="wav",
+                                    status=TranscribeJobStatus.NONE,
+                                ),
+                            }
+                        ),
+                        idsUpdated=["b1-m1-u2"],
+                    ),
+                    TranscribeJobsUpdate(
+                        result=TranscribeBatchResult(
+                            transcribeJobsById={
+                                "b1-m1-u1": TranscribeJob(
+                                    batchId="b1",
+                                    jobId="m1-u1",
+                                    sourceFile="/audio/m1/u1.wav",
+                                    mediaFormat="wav",
+                                    status=TranscribeJobStatus.QUEUED,
+                                ),
+                                "b1-m1-u2": TranscribeJob(
+                                    batchId="b1",
+                                    jobId="m1-u2",
+                                    sourceFile="/audio/m1/u2.wav",
+                                    mediaFormat="wav",
+                                    status=TranscribeJobStatus.QUEUED,
+                                ),
+                                "b1-m1-u3": TranscribeJob(
+                                    batchId="b1",
+                                    jobId="m1-u3",
+                                    sourceFile="/audio/m1/u3.wav",
+                                    mediaFormat="wav",
+                                    status=TranscribeJobStatus.UPLOADED,
+                                ),
+                            }
+                        ),
+                        idsUpdated=["b1-m1-u3"],
+                    ),
+                    TranscribeJobsUpdate(
+                        result=TranscribeBatchResult(
+                            transcribeJobsById={
+                                "b1-m1-u1": TranscribeJob(
+                                    batchId="b1",
+                                    jobId="m1-u1",
+                                    sourceFile="/audio/m1/u1.wav",
+                                    mediaFormat="wav",
                                     status=TranscribeJobStatus.QUEUED,
                                 ),
                                 "b1-m1-u2": TranscribeJob(
@@ -225,7 +402,7 @@ from .helpers import (
                                 ),
                             }
                         ),
-                        idsUpdated=["b1-m1-u1", "b1-m1-u2", "b1-m1-u3"],
+                        idsUpdated=["b1-m1-u3"],
                     ),
                     TranscribeJobsUpdate(
                         result=TranscribeBatchResult(
@@ -314,7 +491,6 @@ from .helpers import (
                         ),
                         idsUpdated=["b1-m1-u3"],
                     ),
-
                     TranscribeJobsUpdate(
                         result=TranscribeBatchResult(
                             transcribeJobsById={
