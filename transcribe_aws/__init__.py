@@ -110,16 +110,12 @@ class AWSTranscriptionService(TranscriptionService):
         transcript_res = requests.get(url)
         transcript_res.raise_for_status()
         transcript_json = transcript_res.json()
-        transcript = ""
         try:
-            transcript = transcript_json["results"]["transcripts"][0]["transcript"]
+            return transcript_json["results"]["transcripts"][0]["transcript"]
         except Exception:
-            pass
-        if not transcript:
             raise Exception(
                 f"unable to parse transcript for job '{aws_job_name} and url {url}': {transcript_json}"
             )
-        return transcript
 
     def get_s3_path(self, source_file: str, id: str) -> str:
         file_name = f"{id.lower()}{os.path.splitext(source_file)[1]}"
