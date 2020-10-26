@@ -1,7 +1,25 @@
 # virtualenv used for pytest
 VENV=.venv
 $(VENV):
-	$(MAKE) venv-create
+	$(MAKE) $(VENV)-update
+
+.PHONY: $(VENV)-update
+$(VENV)-update: virtualenv-installed
+	[ -d $(VENV) ] || virtualenv -p python3.8 $(VENV)
+	$(VENV)/bin/pip install --upgrade pip
+	$(VENV)/bin/pip install -r ./requirements.test.txt
+
+virtualenv-installed:
+	./bin/virtualenv_ensure_installed.sh
+
+# Removes all mentor files from the local file system
+.PHONY: clean
+clean:
+	rm -rf .venv htmlcov .coverage 
+
+.PHONY: deps-update
+deps-update: $(VENV)
+	. $(VENV)/bin/activate && pip-upgrade requirements*
 
 .PHONY: format
 format: $(VENV)
@@ -25,17 +43,3 @@ test-lint: $(VENV)
 .PHONY: test-types
 test-types: $(VENV)
 	. $(VENV)/bin/activate && mypy transcribe_aws
-
-# Removes all mentor files from the local file system
-.PHONY clean:
-clean:
-	rm -rf .venv htmlcov .coverage 
-
-.PHONY: venv-create
-venv-create: virtualenv-installed
-	[ -d $(VENV) ] || virtualenv -p python3 $(VENV)
-	$(VENV)/bin/pip install --upgrade pip
-	$(VENV)/bin/pip install -r ./requirements.test.txt
-
-virtualenv-installed:
-	./bin/virtualenv_ensure_installed.sh
