@@ -218,7 +218,7 @@ class AWSTranscriptionService(TranscriptionService):
         except BaseException as ex:
             if re.search("limitexceeded", str(ex), re.IGNORECASE):
                 logging.info(
-                    f"received a limit-exceeded response from aws. Will try again to start this job shortly"
+                    "received a limit-exceeded response from aws. Will try again to start this job shortly"
                 )
             else:
                 logging.exception(f"exception on start jobs: {ex}")

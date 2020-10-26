@@ -1,12 +1,12 @@
 -r requirements.txt
-black==19.3b0
-callee==0.3
-flake8==3.7.7
+black==20.8b1
+callee==0.3.1
+flake8==3.8.4
 mypy==v0.761
-pytest==5.2.0
-pytest-mock==1.11.0
-pytest-cov==2.7.1
+pip-upgrader==1.4.15
+pytest==6.1.1
+pytest-mock==3.3.1
+pytest-cov==2.10.1
 pytest-env==0.6.2
-pytest-flask==0.15.0
-pytest-sugar==0.9.2
-requests-mock==1.7.0
+pytest-sugar==0.9.4
+requests-mock==1.8.0
