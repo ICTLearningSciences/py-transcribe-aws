@@ -25,7 +25,7 @@ def test_it_raises_exception_for_missing_required_aws_access_key_id(mock_boto3_c
 
 @patch("boto3.client")
 def test_it_raises_exception_for_missing_required_TRANSCRIBE_AWS_S3_BUCKET_SOURCE(
-    mock_boto3_client
+    mock_boto3_client,
 ):
     _test_with_var_missing(
         mock_boto3_client, TEST_SERVICE_CONFIG, "TRANSCRIBE_AWS_S3_BUCKET_SOURCE"
