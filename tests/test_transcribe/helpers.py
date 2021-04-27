@@ -56,7 +56,7 @@ class AwsTranscribeListJobsCall:
 
 @dataclass
 class TranscribeTestFixture:
-    batch_id: str = "b1"
+    batch_id: str = ""
     requests: List[TranscribeJobRequest] = field(default_factory=lambda: [])
     get_job_calls: List[AwsTranscribeGetJobCall] = field(default_factory=lambda: [])
     list_jobs_calls: List[AwsTranscribeListJobsCall] = field(default_factory=lambda: [])
@@ -132,7 +132,7 @@ def run_transcribe_test(mock_boto3_client, fixture: TranscribeTestFixture):
 
             mock_transcribe_client.start_transcription_job.side_effect = _side_effect
         for r in fixture.requests:
-            fqid = f"{batch_id}-{r.jobId}"
+            fqid = f"{batch_id}-{r.jobId}" if batch_id else r.jobId
             input_s3_path = transcribe_service.get_s3_path(r.sourceFile, fqid)
             expected_upload_file_calls.append(
                 call(

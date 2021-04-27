@@ -12,7 +12,6 @@ from typing import Any, Callable, Dict, Iterable, List, Optional
 import time
 
 import boto3
-from uuid import uuid1
 
 from botocore.exceptions import ClientError
 from boto3_type_annotations.s3 import Client as S3Client
@@ -161,7 +160,6 @@ class AWSTranscriptionService(TranscriptionService):
         on_update: Optional[Callable[[TranscribeJobsUpdate], None]] = None,
         **kwargs,
     ) -> TranscribeBatchResult:
-        batch_id = batch_id or str(uuid1())
         logging.info(f"transcribe: assigning batch id {batch_id} to all jobs")
         result = TranscribeBatchResult(
             transcribeJobsById={
