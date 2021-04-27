@@ -10,3 +10,4 @@ pytest-cov==2.11.1
 pytest-env==0.6.2
 pytest-sugar==0.9.4
 requests-mock==1.8.0
+licenseheaders @ git+http://github.com/kycarr/licenseheaders.git@master#egg=licenseheaders
