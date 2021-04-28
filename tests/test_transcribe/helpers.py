@@ -1,3 +1,9 @@
+#
+# This software is Copyright ©️ 2020 The University of Southern California. All Rights Reserved.
+# Permission to use, copy, modify, and distribute this software and its documentation for educational, research and non-profit purposes, without fee, and without a written agreement is hereby granted, provided that the above copyright notice and subject to the full license file found in the root of this software deliverable. Permission to make commercial use of this software may be obtained by contacting:  USC Stevens Center for Innovation University of Southern California 1150 S. Olive Street, Suite 2300, Los Angeles, CA 90115, USA Email: accounting@stevens.usc.edu
+#
+# The full terms of this copyright and license should always be found in the root directory of this software deliverable as "license.txt" and if these terms are not found with this software, please contact the USC Stevens Center for the full license.
+#
 from dataclasses import dataclass, field
 import requests_mock
 from typing import Any, Callable, Dict, List, Optional, Tuple
@@ -50,7 +56,7 @@ class AwsTranscribeListJobsCall:
 
 @dataclass
 class TranscribeTestFixture:
-    batch_id: str = "b1"
+    batch_id: str = ""
     requests: List[TranscribeJobRequest] = field(default_factory=lambda: [])
     get_job_calls: List[AwsTranscribeGetJobCall] = field(default_factory=lambda: [])
     list_jobs_calls: List[AwsTranscribeListJobsCall] = field(default_factory=lambda: [])
@@ -126,7 +132,7 @@ def run_transcribe_test(mock_boto3_client, fixture: TranscribeTestFixture):
 
             mock_transcribe_client.start_transcription_job.side_effect = _side_effect
         for r in fixture.requests:
-            fqid = f"{batch_id}-{r.jobId}"
+            fqid = f"{batch_id}-{r.jobId}" if batch_id else r.jobId
             input_s3_path = transcribe_service.get_s3_path(r.sourceFile, fqid)
             expected_upload_file_calls.append(
                 call(

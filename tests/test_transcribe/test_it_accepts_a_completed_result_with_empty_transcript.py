@@ -1,3 +1,9 @@
+#
+# This software is Copyright ©️ 2020 The University of Southern California. All Rights Reserved.
+# Permission to use, copy, modify, and distribute this software and its documentation for educational, research and non-profit purposes, without fee, and without a written agreement is hereby granted, provided that the above copyright notice and subject to the full license file found in the root of this software deliverable. Permission to make commercial use of this software may be obtained by contacting:  USC Stevens Center for Innovation University of Southern California 1150 S. Olive Street, Suite 2300, Los Angeles, CA 90115, USA Email: accounting@stevens.usc.edu
+#
+# The full terms of this copyright and license should always be found in the root directory of this software deliverable as "license.txt" and if these terms are not found with this software, please contact the USC Stevens Center for the full license.
+#
 import pytest
 from unittest.mock import patch
 
@@ -26,17 +32,16 @@ from .helpers import (
     [
         (
             TranscribeTestFixture(
-                batch_id="b1",
                 requests=[
                     TranscribeJobRequest(jobId="m1-u1", sourceFile="/audio/m1/u1.wav")
                 ],
                 override_expected_start_job_calls=[
                     AwsTranscribeStartJobCall(
                         expected_args={
-                            "TranscriptionJobName": "b1-m1-u1",
+                            "TranscriptionJobName": "m1-u1",
                             "LanguageCode": "en-US",
                             "Media": {
-                                "MediaFileUri": f"https://s3.{TEST_AWS_REGION}.amazonaws.com/{TEST_TRANSCRIBE_SOURCE_BUCKET}/b1-m1-u1.wav"
+                                "MediaFileUri": f"https://s3.{TEST_AWS_REGION}.amazonaws.com/{TEST_TRANSCRIBE_SOURCE_BUCKET}/m1-u1.wav"
                             },
                             "MediaFormat": "wav",
                         }
@@ -47,7 +52,7 @@ from .helpers import (
                         result={
                             "TranscriptionJobSummaries": [
                                 {
-                                    "TranscriptionJobName": "b1-m1-u1",
+                                    "TranscriptionJobName": "m1-u1",
                                     "TranscriptionJobStatus": "COMPLETED",
                                 }
                             ]
@@ -56,12 +61,12 @@ from .helpers import (
                 ],
                 get_job_calls=[
                     AwsTranscribeGetJobCall(
-                        name="b1-m1-u1",
+                        name="m1-u1",
                         result={
                             "TranscriptionJob": {
                                 "TranscriptionJobStatus": "COMPLETED",
                                 "Transcript": {
-                                    "TranscriptFileUri": "http://fake/b1-m1-u1"
+                                    "TranscriptFileUri": "http://fake/m1-u1"
                                 },
                             }
                         },
@@ -77,8 +82,7 @@ from .helpers import (
                 expected_sleep_calls=[],
                 expected_result=TranscribeBatchResult(
                     transcribeJobsById={
-                        "b1-m1-u1": TranscribeJob(
-                            batchId="b1",
+                        "m1-u1": TranscribeJob(
                             jobId="m1-u1",
                             sourceFile="/audio/m1/u1.wav",
                             mediaFormat="wav",
@@ -91,8 +95,7 @@ from .helpers import (
                     TranscribeJobsUpdate(
                         result=TranscribeBatchResult(
                             transcribeJobsById={
-                                "b1-m1-u1": TranscribeJob(
-                                    batchId="b1",
+                                "m1-u1": TranscribeJob(
                                     jobId="m1-u1",
                                     sourceFile="/audio/m1/u1.wav",
                                     mediaFormat="wav",
@@ -101,7 +104,7 @@ from .helpers import (
                                 )
                             }
                         ),
-                        idsUpdated=["b1-m1-u1"],
+                        idsUpdated=["m1-u1"],
                     )
                 ],
             )

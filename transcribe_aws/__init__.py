@@ -1,3 +1,9 @@
+#
+# This software is Copyright ©️ 2020 The University of Southern California. All Rights Reserved.
+# Permission to use, copy, modify, and distribute this software and its documentation for educational, research and non-profit purposes, without fee, and without a written agreement is hereby granted, provided that the above copyright notice and subject to the full license file found in the root of this software deliverable. Permission to make commercial use of this software may be obtained by contacting:  USC Stevens Center for Innovation University of Southern California 1150 S. Olive Street, Suite 2300, Los Angeles, CA 90115, USA Email: accounting@stevens.usc.edu
+#
+# The full terms of this copyright and license should always be found in the root directory of this software deliverable as "license.txt" and if these terms are not found with this software, please contact the USC Stevens Center for the full license.
+#
 import logging
 import requests
 import os
@@ -6,7 +12,6 @@ from typing import Any, Callable, Dict, Iterable, List, Optional
 import time
 
 import boto3
-from uuid import uuid1
 
 from botocore.exceptions import ClientError
 from boto3_type_annotations.s3 import Client as S3Client
@@ -155,7 +160,6 @@ class AWSTranscriptionService(TranscriptionService):
         on_update: Optional[Callable[[TranscribeJobsUpdate], None]] = None,
         **kwargs,
     ) -> TranscribeBatchResult:
-        batch_id = batch_id or str(uuid1())
         logging.info(f"transcribe: assigning batch id {batch_id} to all jobs")
         result = TranscribeBatchResult(
             transcribeJobsById={

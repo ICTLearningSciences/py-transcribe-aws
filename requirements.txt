@@ -2,7 +2,4 @@ awscli>=1.18.165
 boto3>=1.16.5
 boto3_type_annotations>=0.3.1
 requests>=2.24.0
-uuid>=1.30
-transcribe @ git+https://github.com/ictlearningsciences/py-transcribe.git@1.1.0#egg=transcribe
-# explicitly pinning Werkzeug UNTIL this bug is fixed: https://github.com/jarus/flask-testing/issues/143
-Werkzeug>=1.0.1
+transcribe @ git+https://github.com/ictlearningsciences/py-transcribe.git@1.2.0-alpha.1#egg=transcribe
