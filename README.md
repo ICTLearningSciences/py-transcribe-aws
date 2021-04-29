@@ -7,12 +7,6 @@ Python Installation
 -------------------
 
 ```
-pip install --user -e git+https://github.com/ictlearningsciences/py-transcribe-aws.git@{release-tag}#egg=transcribe
-```
-
-With pip
-
-```
 pip install py_transcribe_aws
 ```
 
