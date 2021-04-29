@@ -1,0 +1,67 @@
+name: test/build/push
+on: push
+jobs:
+  test:
+    name: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: python env setup
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.8
+      - name: test format
+        run: make test-format
+      - name: test lint
+        run: make test-lint
+      - name: test types
+        run: make test-types
+      - name: test licenses
+        run: make test-license
+  publish-check:
+    name: publish check
+    needs:
+      - test
+    runs-on: ubuntu-latest
+    outputs:
+      is_release: ${{ steps.is_release.outputs.is_release }}
+    steps:
+      - id: is_release
+        run: |
+          if [[ ${{ github.event.ref }} =~ ^refs/tags/[0-9]+\.[0-9]+\.[0-9]+(-[a-z0-9.]*)?$ ]]; then
+              echo ::set-output name=is_release::true
+          fi
+  publish:
+    name: publish to test.pypi and pypi
+    runs-on: ubuntu-latest
+    needs:
+      - publish-check
+      - test
+    if: needs.publish-check.outputs.is_release
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set version
+        run: echo "${GITHUB_REF#refs/tags/}" > VERSION
+      - name: Install pypa/build
+        run: >-
+          python -m
+          pip install
+          build
+          --user
+      - name: Build a binary wheel and a source tarball
+        run: >-
+          python -m
+          build
+          --sdist
+          --wheel
+          --outdir dist/
+          .
+      - name: Publish distribution 📦 to Test PyPI
+        uses: pypa/gh-action-pypi-publish@master
+        with:
+          password: ${{ secrets.TEST_PYPI_API_TOKEN }}
+          repository_url: https://test.pypi.org/legacy/
+      - name: Publish distribution 📦 to PyPI
+        uses: pypa/gh-action-pypi-publish@master
+        with:
+          password: ${{ secrets.PYPI_API_TOKEN }}
