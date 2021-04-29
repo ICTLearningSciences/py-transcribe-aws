@@ -8,7 +8,7 @@ import logging
 import requests
 import os
 import re
-from typing import Any, Callable, Dict, Iterable, List, Optional
+from typing import Any, Callable, Dict, Iterable, List, Optional, Union
 import time
 
 import boto3
@@ -20,7 +20,6 @@ from boto3_type_annotations.transcribe import Client as TranscribeClient
 from transcribe import (
     copy_shallow,
     requests_to_job_batch,
-    require_env,
     register_transcription_service_factory,
     TranscribeBatchResult,
     TranscribeJob,
@@ -40,15 +39,31 @@ _TRANSCRIBE_JOB_STATUS_BY_AWS_STATUS: Dict[str, TranscribeJobStatus] = {
 DEFAULT_POLL_INTERVAL: float = 5.0
 
 
+def _require_env(n: Union[str, List[str]], v: str = "") -> str:
+    if v:
+        return v
+    env_names: List[str] = [n] if isinstance(n, str) else n
+    for k in env_names:
+        env_val = os.environ.get(k, "")
+        if env_val:
+            return env_val
+    raise EnvironmentError(f"missing required env var {'|'.join(env_names)}")
+
+
+def _prefix_require_env(n: str, v: str = "") -> str:
+    return _require_env([f"TRANSCRIBE_{n}", n], v)
+
+
 def _create_s3_client(
     aws_access_key_id: str = "", aws_secret_access_key: str = "", aws_region: str = ""
 ) -> S3Client:
     return boto3.client(
         "s3",
-        region_name=require_env("AWS_REGION", aws_region),
-        aws_access_key_id=require_env("AWS_ACCESS_KEY_ID", aws_access_key_id),
-        aws_secret_access_key=require_env(
-            "AWS_SECRET_ACCESS_KEY", aws_secret_access_key
+        region_name=_prefix_require_env("AWS_REGION", aws_region),
+        aws_access_key_id=_prefix_require_env("AWS_ACCESS_KEY_ID", aws_access_key_id),
+        aws_secret_access_key=_prefix_require_env(
+            "AWS_SECRET_ACCESS_KEY",
+            aws_secret_access_key,
         ),
     )
 
@@ -58,9 +73,9 @@ def _create_transcribe_client(
 ) -> TranscribeClient:
     return boto3.client(
         "transcribe",
-        region_name=require_env("AWS_REGION", aws_region),
-        aws_access_key_id=require_env("AWS_ACCESS_KEY_ID", aws_access_key_id),
-        aws_secret_access_key=require_env(
+        region_name=_prefix_require_env("AWS_REGION", aws_region),
+        aws_access_key_id=_prefix_require_env("AWS_ACCESS_KEY_ID", aws_access_key_id),
+        aws_secret_access_key=_prefix_require_env(
             "AWS_SECRET_ACCESS_KEY", aws_secret_access_key
         ),
     )
@@ -127,20 +142,20 @@ class AWSTranscriptionService(TranscriptionService):
         return f"{self.s3_root_path}/{file_name}" if self.s3_root_path else file_name
 
     def init_service(self, config: Dict[str, Any] = {}, **kwargs):
-        self.aws_region = config.get("AWS_REGION") or require_env("AWS_REGION")
+        self.aws_region = config.get("AWS_REGION") or _prefix_require_env("AWS_REGION")
         self.s3_bucket_source = config.get(
             "TRANSCRIBE_AWS_S3_BUCKET_SOURCE"
-        ) or require_env("TRANSCRIBE_AWS_S3_BUCKET_SOURCE")
+        ) or _require_env("TRANSCRIBE_AWS_S3_BUCKET_SOURCE")
         self.s3_root_path = config.get(
             "TRANSCRIBE_AWS_S3_ROOT_PATH",
             os.environ.get("TRANSCRIBE_AWS_S3_ROOT_PATH", ""),
         )
-        aws_access_key_id = config.get("AWS_ACCESS_KEY_ID") or require_env(
+        aws_access_key_id = config.get("AWS_ACCESS_KEY_ID") or _prefix_require_env(
             "AWS_ACCESS_KEY_ID"
         )
-        aws_secret_access_key = config.get("AWS_SECRET_ACCESS_KEY") or require_env(
+        aws_secret_access_key = config.get(
             "AWS_SECRET_ACCESS_KEY"
-        )
+        ) or _prefix_require_env("AWS_SECRET_ACCESS_KEY")
         self.s3_client = _create_s3_client(
             aws_region=self.aws_region,
             aws_access_key_id=aws_access_key_id,
