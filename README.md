@@ -13,13 +13,7 @@ pip install --user -e git+https://github.com/ictlearningsciences/py-transcribe-a
 With pip
 
 ```
-pip install git+https://github.com/ictlearningsciences/py-transcribe-aws.git@{release-tag}#egg=transcribe_aws
-```
-
-...in a pip `requirements.txt` use this syntax:
-
-```
-transcribe_aws @ git+https://github.com/ictlearningsciences/py-transcribe-aws.git@{release-tag}#egg=transcribe_aws
+pip install py_transcribe_aws
 ```
 
 ## Usage
