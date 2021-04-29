@@ -16,9 +16,14 @@ def _read_dependencies():
 packages = find_packages()
 requirements = _read_dependencies()
 
+
+def _read_version():
+    with open('VERSION') as version_file:
+        return version_file.read().strip()
+
 setup(
-    name="transcribe_aws",
-    version="1.0.0",
+    name="py_transcribe_aws",
+    version=_read_version(),
     author_email="larrykirschner@gmail.com",
     description="framework for synchronous batch speech-to-text transcription using backends like AWS, Watson, etc.",
     packages=packages,
