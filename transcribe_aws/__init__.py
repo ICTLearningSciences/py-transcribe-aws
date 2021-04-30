@@ -98,7 +98,7 @@ def _s3_file_exists(s3: S3Client, bucket: str, key: str) -> bool:
 
 
 def next_batch_id() -> str:
-    return uuid.uuid4()
+    return str(uuid.uuid4())
 
 
 class AWSTranscriptionService(TranscriptionService):
