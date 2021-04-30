@@ -32,16 +32,17 @@ from .helpers import (
     [
         (
             TranscribeTestFixture(
+                batch_id="b1",
                 requests=[
                     TranscribeJobRequest(jobId="m1-u1", sourceFile="/audio/m1/u1.wav")
                 ],
                 override_expected_start_job_calls=[
                     AwsTranscribeStartJobCall(
                         expected_args={
-                            "TranscriptionJobName": "m1-u1",
+                            "TranscriptionJobName": "b1-m1-u1",
                             "LanguageCode": "en-US",
                             "Media": {
-                                "MediaFileUri": f"https://s3.{TEST_AWS_REGION}.amazonaws.com/{TEST_TRANSCRIBE_SOURCE_BUCKET}/m1-u1.wav"
+                                "MediaFileUri": f"https://s3.{TEST_AWS_REGION}.amazonaws.com/{TEST_TRANSCRIBE_SOURCE_BUCKET}/b1-m1-u1.wav"
                             },
                             "MediaFormat": "wav",
                         }
@@ -52,7 +53,7 @@ from .helpers import (
                         result={
                             "TranscriptionJobSummaries": [
                                 {
-                                    "TranscriptionJobName": "m1-u1",
+                                    "TranscriptionJobName": "b1-m1-u1",
                                     "TranscriptionJobStatus": "COMPLETED",
                                 }
                             ]
@@ -61,12 +62,12 @@ from .helpers import (
                 ],
                 get_job_calls=[
                     AwsTranscribeGetJobCall(
-                        name="m1-u1",
+                        name="b1-m1-u1",
                         result={
                             "TranscriptionJob": {
                                 "TranscriptionJobStatus": "COMPLETED",
                                 "Transcript": {
-                                    "TranscriptFileUri": "http://fake/m1-u1"
+                                    "TranscriptFileUri": "http://fake/b1-m1-u1"
                                 },
                             }
                         },
@@ -82,7 +83,8 @@ from .helpers import (
                 expected_sleep_calls=[],
                 expected_result=TranscribeBatchResult(
                     transcribeJobsById={
-                        "m1-u1": TranscribeJob(
+                        "b1-m1-u1": TranscribeJob(
+                            batchId="b1",
                             jobId="m1-u1",
                             sourceFile="/audio/m1/u1.wav",
                             mediaFormat="wav",
@@ -95,7 +97,8 @@ from .helpers import (
                     TranscribeJobsUpdate(
                         result=TranscribeBatchResult(
                             transcribeJobsById={
-                                "m1-u1": TranscribeJob(
+                                "b1-m1-u1": TranscribeJob(
+                                    batchId="b1",
                                     jobId="m1-u1",
                                     sourceFile="/audio/m1/u1.wav",
                                     mediaFormat="wav",
@@ -104,7 +107,7 @@ from .helpers import (
                                 )
                             }
                         ),
-                        idsUpdated=["m1-u1"],
+                        idsUpdated=["b1-m1-u1"],
                     )
                 ],
             )

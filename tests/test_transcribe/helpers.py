@@ -34,10 +34,10 @@ class AwsTranscribeStartJobCall:
 class AwsTranscribeGetJobCall:
     name: str
     result: Dict[str, Any] = field(default_factory=lambda: {})
-    transcribe_url_response: Dict[str, str] = field(default_factory=lambda: {})
+    transcribe_url_response: Dict[str, Any] = field(default_factory=lambda: {})
 
     def is_success_result(self) -> bool:
-        return (
+        return bool(
             self.result
             and "TranscriptionJob" in self.result
             and self.result["TranscriptionJob"].get("TranscriptionJobStatus")
@@ -56,7 +56,7 @@ class AwsTranscribeListJobsCall:
 
 @dataclass
 class TranscribeTestFixture:
-    batch_id: str = ""
+    batch_id: str = "b1"
     requests: List[TranscribeJobRequest] = field(default_factory=lambda: [])
     get_job_calls: List[AwsTranscribeGetJobCall] = field(default_factory=lambda: [])
     list_jobs_calls: List[AwsTranscribeListJobsCall] = field(default_factory=lambda: [])
@@ -132,7 +132,7 @@ def run_transcribe_test(mock_boto3_client, fixture: TranscribeTestFixture):
 
             mock_transcribe_client.start_transcription_job.side_effect = _side_effect
         for r in fixture.requests:
-            fqid = f"{batch_id}-{r.jobId}" if batch_id else r.jobId
+            fqid = f"{batch_id}-{r.jobId}"
             input_s3_path = transcribe_service.get_s3_path(r.sourceFile, fqid)
             expected_upload_file_calls.append(
                 call(
@@ -166,12 +166,12 @@ def run_transcribe_test(mock_boto3_client, fixture: TranscribeTestFixture):
         expected_get_job_calls = []
         mock_get_job_responses = []
         with requests_mock.Mocker() as mock_requests:
-            for c in fixture.get_job_calls:
-                expected_get_job_calls.append(call(TranscriptionJobName=c.name))
-                if c.is_success_result():
-                    t_url = c.get_transcription_url()
-                    mock_requests.get(t_url, json=c.transcribe_url_response)
-                mock_get_job_responses.append(c.result)
+            for gjc in fixture.get_job_calls:
+                expected_get_job_calls.append(call(TranscriptionJobName=gjc.name))
+                if gjc.is_success_result():
+                    t_url = gjc.get_transcription_url()
+                    mock_requests.get(t_url, json=gjc.transcribe_url_response)
+                mock_get_job_responses.append(gjc.result)
             mock_transcribe_client.get_transcription_job.side_effect = (
                 mock_get_job_responses
             )

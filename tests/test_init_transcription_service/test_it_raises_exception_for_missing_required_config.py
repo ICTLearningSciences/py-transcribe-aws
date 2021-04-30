@@ -4,6 +4,7 @@
 #
 # The full terms of this copyright and license should always be found in the root directory of this software deliverable as "license.txt" and if these terms are not found with this software, please contact the USC Stevens Center for the full license.
 #
+from typing import Optional
 from unittest.mock import patch
 from transcribe import init_transcription_service
 
@@ -55,7 +56,7 @@ def _test_with_var_missing(
     mock_boto3_client, config: dict, missing_var: str, err: str = ""
 ):
     test_config = {k: v for k, v in config.items() if k != missing_var}
-    ex_caught: EnvironmentError = None
+    ex_caught: Optional[EnvironmentError] = None
     try:
         init_transcription_service(module_path="transcribe_aws", config=test_config)
     except EnvironmentError as ex:
