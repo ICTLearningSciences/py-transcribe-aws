@@ -10,6 +10,7 @@ import os
 import re
 from typing import Any, Callable, Dict, Iterable, List, Optional, Union
 import time
+import uuid
 
 import boto3
 
@@ -96,6 +97,10 @@ def _s3_file_exists(s3: S3Client, bucket: str, key: str) -> bool:
     return True
 
 
+def next_batch_id() -> str:
+    return uuid.uuid4()
+
+
 class AWSTranscriptionService(TranscriptionService):
     def _get_batch_status(self, batch_id: str) -> List[Dict[str, Any]]:
         result: List[Dict[str, Any]] = []
@@ -175,6 +180,7 @@ class AWSTranscriptionService(TranscriptionService):
         on_update: Optional[Callable[[TranscribeJobsUpdate], None]] = None,
         **kwargs,
     ) -> TranscribeBatchResult:
+        batch_id = batch_id or next_batch_id()
         logging.info(f"transcribe: assigning batch id {batch_id} to all jobs")
         result = TranscribeBatchResult(
             transcribeJobsById={
