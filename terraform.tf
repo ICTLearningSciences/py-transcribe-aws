@@ -22,17 +22,6 @@ resource "aws_s3_bucket" "transcribe_upload" {
   force_destroy   = true
 }
 
-resource "aws_s3control_bucket_lifecycle_configuration" "transcribe_upload" {
-  bucket = aws_s3control_bucket.transcribe_upload.arn
-  rule {
-    expiration {
-      days = 2
-    }
-    id = "uploads"
-  }
-}
-
-
 data "aws_iam_policy_document" "transcribe_policy" {
   statement {
     sid = "1"
@@ -77,12 +66,12 @@ data "aws_region" "current" {}
 
 output "transcribe_env_vars" {
     sensitive   = true
+    description = "env vars for running transcribe"
     value       = {
-        TRANSCRIBE_AWS_ACCESS_KEY_ID        = aws_iam_access_key.id,
-        TRANSCRIBE_AWS_SECRET_ACCESS_KEY    = aws_iam_access_key.secret,
+        TRANSCRIBE_AWS_ACCESS_KEY_ID        = aws_iam_access_key.transcribe_policy_access_key.id,
+        TRANSCRIBE_AWS_SECRET_ACCESS_KEY    = aws_iam_access_key.transcribe_policy_access_key.secret,
         TRANSCRIBE_AWS_REGION               = data.aws_region.current.name,
         TRANSCRIBE_AWS_S3_BUCKET_SOURCE     = local.transcribe_s3_bucket_name
         TRANSCRIBE_MODULE_PATH              = "transcribe_aws"
-    },
-    description = "env vars for running transcribe"
+    }
 }
