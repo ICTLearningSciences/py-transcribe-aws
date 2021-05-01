@@ -1,7 +1,7 @@
 py-transcribe-aws
 ===================
 
-AWS Transcribe implementation of [py-transcribe](https://github.com/ICTLearningSciences/py-transcribe)
+Simple library for running batch transcribe jobs in AWS. Implemented on the [py-transcribe](https://github.com/ICTLearningSciences/py-transcribe) framework to make your code transcribe-platform agnostic and easy to test.
 
 Python Installation
 -------------------
@@ -37,37 +37,34 @@ Your code generally should not need to access any of the implementations in this
 
 ### ENV/config vars
 
-The following config vars can be set in ENV or passed in code, e.g. `init_transcription_service(config={})`
+The following config vars can be set in ENV or passed in code, e.g. `init_transcription_service(config={})`. Most env vars have two accepted versions and the version with a `TRANSCRIBE_` prefix has higher precedence.
 
-#### TRANSCRIBE_AWS_REGION|AWS_REGION
+*TRANSCRIBE_AWS_REGION|AWS_REGION*
 
 (required)
 
 The region hosting the S3 bucket to which source audio (or video) files will be uploaded for transcription
 
-#### TRANSCRIBE_AWS_ACCESS_KEY_ID|AWS_ACCESS_KEY_ID
+*TRANSCRIBE_AWS_ACCESS_KEY_ID|AWS_ACCESS_KEY_ID*
 
 (required)
 
-#### TRANSCRIBE_AWS_SECRET_ACCESS_KEY|AWS_SECRET_ACCESS_KEY
+*TRANSCRIBE_AWS_SECRET_ACCESS_KEY|AWS_SECRET_ACCESS_KEY*
 
 (required)
 
-#### TRANSCRIBE_AWS_S3_BUCKET_SOURCE
+*TRANSCRIBE_AWS_S3_BUCKET_SOURCE*
 
 (required)
 
 Bucket where source will be uploaded and then passed to AWS Transcribe
 
-### AWS Permissions
+AWS Configuration
+-----------------
 
-The AWS IAM used must have permissions to read/write/delete from the configured source bucket and also use AWS Transcribe
+### Using Terraform
 
-TODO: give exact details on minimum permissions/policies.
-
-## Terraform module for setting up transcribe infrastructure
-
-This repo includes a terraform module for setting up the necessary infrastructure to run transcribe.
+This repo includes a terraform module for setting up all the necessary infrastructure to run transcribe.
 
 You can include the terraform module, like this:
 
@@ -82,7 +79,33 @@ module "transcribe_aws" {
 
 ```hcl
 resource "some_server_type" {
-    env = module.transcribe_aws.transcribe_env_vars
+    # set TRANSCRIBE_AWS_ACCESS_KEY_ID, TRANSCRIBE_AWS_SECRET_ACCESS_KEY, etc. in some server-resource env
+    env = module.transcribe_aws.transcribe_env_vars  
+}
+```
+
+
+### If You're Setting up Permissions Manually...
+
+If you setting up AWS infrastructure manually (as opposed to using the terraform aboice), the AWS IAM used must have permissions to read/write/delete from the configured source bucket and also use AWS Transcribe
+
+A minimal(ish) policy to allow the above might look like this:
+
+```json
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": ["s3:*Object"],
+            "Resource": "arn:aws:s3:::${YOUR_S3_BUCKET_NAME}/*"
+        },
+        {
+            "Effect": "Allow",
+            "Action": ["transcribe:*"],
+            "Resource": "*"
+        }
+    ]
 }
 ```
 
