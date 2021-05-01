@@ -39,17 +39,17 @@ Your code generally should not need to access any of the implementations in this
 
 The following config vars can be set in ENV or passed in code, e.g. `init_transcription_service(config={})`
 
-#### AWS_REGION 
+#### TRANSCRIBE_AWS_REGION|AWS_REGION
 
 (required)
 
 The region hosting the S3 bucket to which source audio (or video) files will be uploaded for transcription
 
-#### AWS_ACCESS_KEY_ID 
+#### TRANSCRIBE_AWS_ACCESS_KEY_ID|AWS_ACCESS_KEY_ID
 
 (required)
 
-#### AWS_SECRET_ACCESS_KEY
+#### TRANSCRIBE_AWS_SECRET_ACCESS_KEY|AWS_SECRET_ACCESS_KEY
 
 (required)
 
@@ -64,6 +64,27 @@ Bucket where source will be uploaded and then passed to AWS Transcribe
 The AWS IAM used must have permissions to read/write/delete from the configured source bucket and also use AWS Transcribe
 
 TODO: give exact details on minimum permissions/policies.
+
+## Terraform module for setting up transcribe infrastructure
+
+This repo includes a terraform module for setting up the necessary infrastructure to run transcribe.
+
+You can include the terraform module, like this:
+
+```hcl
+module "transcribe_aws" {
+    source                  = "git::https://github.com/ICTLearningSciences/py-transcribe-aws.git?ref=tags/{CHANGE_TO_LATEST_VERSION}"
+    transcribe_namespace    = "YOUR_NAMESPACE"
+}
+```
+
+...and then the module exposes all the (sensitive) env vars for running transcribe in an output map, which you can use like
+
+```hcl
+resource "some_server_type" {
+    env = module.transcribe_aws.transcribe_env_vars
+}
+```
 
 
 Development

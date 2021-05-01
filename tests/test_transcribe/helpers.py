@@ -34,10 +34,10 @@ class AwsTranscribeStartJobCall:
 class AwsTranscribeGetJobCall:
     name: str
     result: Dict[str, Any] = field(default_factory=lambda: {})
-    transcribe_url_response: Dict[str, str] = field(default_factory=lambda: {})
+    transcribe_url_response: Dict[str, Any] = field(default_factory=lambda: {})
 
     def is_success_result(self) -> bool:
-        return (
+        return bool(
             self.result
             and "TranscriptionJob" in self.result
             and self.result["TranscriptionJob"].get("TranscriptionJobStatus")
@@ -57,6 +57,7 @@ class AwsTranscribeListJobsCall:
 @dataclass
 class TranscribeTestFixture:
     batch_id: str = ""
+    mock_next_batch_id: str = "b1"
     requests: List[TranscribeJobRequest] = field(default_factory=lambda: [])
     get_job_calls: List[AwsTranscribeGetJobCall] = field(default_factory=lambda: [])
     list_jobs_calls: List[AwsTranscribeListJobsCall] = field(default_factory=lambda: [])
@@ -106,12 +107,15 @@ def create_service(mock_boto3_client) -> Tuple[AWSTranscriptionService, Any, Any
     return (service, mock_s3_client, mock_transcribe_client)
 
 
-def run_transcribe_test(mock_boto3_client, fixture: TranscribeTestFixture):
-    with patch("time.sleep") as mock_sleep:
+def run_transcribe_test(mock_boto3_client: Mock, fixture: TranscribeTestFixture):
+    with patch("time.sleep") as mock_sleep, patch(
+        "transcribe_aws.next_batch_id"
+    ) as mock_next_batch_id:
         transcribe_service, mock_s3_client, mock_transcribe_client = create_service(
             mock_boto3_client
         )
-        batch_id = fixture.batch_id
+        mock_next_batch_id.return_value = fixture.mock_next_batch_id
+        batch_id_effective = fixture.batch_id or fixture.mock_next_batch_id
         spy_on_update = Mock()
         expected_upload_file_calls = []
         expected_start_transcription_job_calls = (
@@ -132,7 +136,7 @@ def run_transcribe_test(mock_boto3_client, fixture: TranscribeTestFixture):
 
             mock_transcribe_client.start_transcription_job.side_effect = _side_effect
         for r in fixture.requests:
-            fqid = f"{batch_id}-{r.jobId}" if batch_id else r.jobId
+            fqid = f"{batch_id_effective}-{r.jobId}"
             input_s3_path = transcribe_service.get_s3_path(r.sourceFile, fqid)
             expected_upload_file_calls.append(
                 call(
@@ -157,7 +161,7 @@ def run_transcribe_test(mock_boto3_client, fixture: TranscribeTestFixture):
         mock_list_call_responses = []
         for c in fixture.list_jobs_calls:
             expected_list_jobs_calls.append(
-                call(JobNameContains=batch_id, NextToken=c.next_token)
+                call(JobNameContains=batch_id_effective, NextToken=c.next_token)
             )
             mock_list_call_responses.append(c.result)
         mock_transcribe_client.list_transcription_jobs.side_effect = (
@@ -166,17 +170,17 @@ def run_transcribe_test(mock_boto3_client, fixture: TranscribeTestFixture):
         expected_get_job_calls = []
         mock_get_job_responses = []
         with requests_mock.Mocker() as mock_requests:
-            for c in fixture.get_job_calls:
-                expected_get_job_calls.append(call(TranscriptionJobName=c.name))
-                if c.is_success_result():
-                    t_url = c.get_transcription_url()
-                    mock_requests.get(t_url, json=c.transcribe_url_response)
-                mock_get_job_responses.append(c.result)
+            for gjc in fixture.get_job_calls:
+                expected_get_job_calls.append(call(TranscriptionJobName=gjc.name))
+                if gjc.is_success_result():
+                    t_url = gjc.get_transcription_url()
+                    mock_requests.get(t_url, json=gjc.transcribe_url_response)
+                mock_get_job_responses.append(gjc.result)
             mock_transcribe_client.get_transcription_job.side_effect = (
                 mock_get_job_responses
             )
             result = transcribe_service.transcribe(
-                fixture.requests, on_update=spy_on_update, batch_id=batch_id
+                fixture.requests, on_update=spy_on_update, batch_id=fixture.batch_id
             )
             mock_s3_client.upload_file.assert_has_calls(expected_upload_file_calls)
             mock_transcribe_client.start_transcription_job.assert_has_calls(
