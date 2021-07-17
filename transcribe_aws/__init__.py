@@ -4,6 +4,37 @@
 #
 # The full terms of this copyright and license should always be found in the root directory of this software deliverable as "license.txt" and if these terms are not found with this software, please contact the USC Stevens Center for the full license.
 #
+
+
+
+
+
+"""
+TODO:
+ - log to see what is happening in case where we get NEXT on list status?
+ - logging for transcribe-aws configured by env (maybe in upload-worker?)
+ - do we need to multithread to batch poll calls for all active jobs? AVOID THIS
+ - exponential backoff on TranscribeService.Client.exceptions.LimitExceededException?
+ 
+"""
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 import logging
 import requests
 import os
@@ -38,6 +69,9 @@ _TRANSCRIBE_JOB_STATUS_BY_AWS_STATUS: Dict[str, TranscribeJobStatus] = {
 }
 
 DEFAULT_POLL_INTERVAL: float = 5.0
+
+
+logger = logging.getLogger("transcribe_aws")
 
 
 def _require_env(n: Union[str, List[str]], v: str = "") -> str:
@@ -88,15 +122,6 @@ def _parse_aws_status(
     return _TRANSCRIBE_JOB_STATUS_BY_AWS_STATUS.get(aws_status, default_status)
 
 
-def _s3_file_exists(s3: S3Client, bucket: str, key: str) -> bool:
-    try:
-        s3.head_object(Bucket=bucket, Key=key)
-    except ClientError as e:
-        logging.error(e)
-        return int(e.response["Error"]["Code"]) != 404
-    return True
-
-
 def next_batch_id() -> str:
     return str(uuid.uuid4())
 
@@ -104,6 +129,9 @@ def next_batch_id() -> str:
 class AWSTranscriptionService(TranscriptionService):
     def _get_batch_status(self, batch_id: str) -> List[Dict[str, Any]]:
         result: List[Dict[str, Any]] = []
+        logger.info(
+            f"requesting batch status...list_transcription_jobs(JobNameContains={batch_id})"
+        )
         cur_result_page = self.transcribe_client.list_transcription_jobs(
             JobNameContains=batch_id
         )
@@ -171,7 +199,17 @@ class AWSTranscriptionService(TranscriptionService):
             aws_access_key_id=aws_access_key_id,
             aws_secret_access_key=aws_secret_access_key,
         )
-        self.poll_interval = config.get("POLL_INTERVAL", DEFAULT_POLL_INTERVAL)
+        self.poll_interval = float(
+            config.get(
+                "POLL_INTERVAL",
+                os.environ.get("TRANSCRIBE_AWS_POLL_INTERVAL", DEFAULT_POLL_INTERVAL),
+            )
+        )
+        logger.info(f"poll_interval={self.poll_interval}")
+        logger.info(f"config.get(POLL_INTERVAL)={config.get('POLL_INTERVAL')}")
+        logger.info(
+            f"os.environ.get('TRANSCRIBE_AWS_POLL_INTERVAL')={os.environ.get('TRANSCRIBE_AWS_POLL_INTERVAL')}"
+        )
 
     def transcribe(
         self,
@@ -181,21 +219,39 @@ class AWSTranscriptionService(TranscriptionService):
         **kwargs,
     ) -> TranscribeBatchResult:
         batch_id = batch_id or next_batch_id()
-        logging.info(f"transcribe: assigning batch id {batch_id} to all jobs")
+        logger.info(
+            f"transcribe[{batch_id}]: assigning batch id {batch_id} to all jobs"
+        )
         result = TranscribeBatchResult(
             transcribeJobsById={
                 j.get_fq_id(): j
                 for j in requests_to_job_batch(batch_id, transcribe_requests)
             }
         )
+        start = time.time()
         for i, job in enumerate(result.jobs()):
+            upload_start = time.time()
+            logger.info(
+                f"transcribe[{batch_id}]: upload start for job {job.get_fq_id()}..."
+            )
             result = self._upload_one(job, i, result, on_update)
+            logger.info(
+                f"transcribe[{batch_id}]: upload completed for job {job.get_fq_id()} in {time.time() - upload_start} secs"
+            )
             result = self._try_ensure_all_jobs_started(result, batch_id, on_update)
+        logger.info(
+            f"transcribe[{batch_id}]: all uploads completed in {time.time() - start} secs"
+        )
         while result.has_any_unresolved():
             if self.poll_interval > 0:
                 time.sleep(self.poll_interval)
+            check_status_start = time.time()
+            logger.info(f"transcribe[{batch_id}]: checking status...")
             result = self._try_ensure_all_jobs_started(result, batch_id, on_update)
             result = self._update_status(result, batch_id, on_update)
+            logger.info(
+                f"transcribe[{batch_id}]: checking status completed in {time.time() - check_status_start} secs"
+            )
         return result
 
     def _send_on_update(
@@ -211,7 +267,7 @@ class AWSTranscriptionService(TranscriptionService):
                     TranscribeJobsUpdate(result=result, idsUpdated=sorted(ids_updated))
                 )
             except Exception as ex:
-                logging.exception(f"update handler raise exception: {ex}")
+                logger.exception(f"update handler raise exception: {ex}")
         return result
 
     def _try_ensure_all_jobs_started(
@@ -242,11 +298,11 @@ class AWSTranscriptionService(TranscriptionService):
                 job_ids_started.append(jid)
         except BaseException as ex:
             if re.search("limitexceeded", str(ex), re.IGNORECASE):
-                logging.info(
+                logger.info(
                     "received a limit-exceeded response from aws. Will try again to start this job shortly"
                 )
             else:
-                logging.exception(f"exception on start jobs: {ex}")
+                logger.exception(f"exception on start jobs: {ex}")
         if job_ids_started:
             self._send_on_update(result, job_ids_started, on_update)
         return result
@@ -281,9 +337,9 @@ class AWSTranscriptionService(TranscriptionService):
                 if result.update_job(jid, status=jstatus, transcript=transcript):
                     ids_updated.append(jid)
             except Exception as ex:
-                logging.exception(f"failed to handle update for {ju}: {ex}")
+                logger.exception(f"failed to handle update for {ju}: {ex}")
         summary = result.summary()
-        logging.info(
+        logger.info(
             f"transcribe [{summary.get_count_completed()}/{summary.get_count_total()}] completed. Statuses [SUCCEEDED: {summary.get_count(TranscribeJobStatus.SUCCEEDED)}, FAILED: {summary.get_count(TranscribeJobStatus.FAILED)}, QUEUED: {summary.get_count(TranscribeJobStatus.QUEUED)}, IN_PROGRESS: {summary.get_count(TranscribeJobStatus.IN_PROGRESS)}]."
         )
         self._send_on_update(result, ids_updated, on_update)
@@ -299,7 +355,7 @@ class AWSTranscriptionService(TranscriptionService):
         jid = job.get_fq_id()
         result = copy_shallow(result)
         item_s3_path = self.get_s3_path(job.sourceFile, jid)
-        logging.info(
+        logger.info(
             f"transcribe [{job_index + 1}/{len(result.transcribeJobsById)}] uploading audio to s3 bucket {self.s3_bucket_source} and path {item_s3_path}"
         )
         self.s3_client.upload_file(
