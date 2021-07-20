@@ -4,42 +4,11 @@
 #
 # The full terms of this copyright and license should always be found in the root directory of this software deliverable as "license.txt" and if these terms are not found with this software, please contact the USC Stevens Center for the full license.
 #
-
-
-
-
-
-"""
-TODO:
- - log to see what is happening in case where we get NEXT on list status?
- - logging for transcribe-aws configured by env (maybe in upload-worker?)
- - do we need to multithread to batch poll calls for all active jobs? AVOID THIS
- - exponential backoff on TranscribeService.Client.exceptions.LimitExceededException?
- 
-"""
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 import logging
 import requests
 import os
 import re
-from typing import Any, Callable, Dict, Iterable, List, Optional, Union
+from typing import Any, Callable, Dict, Iterable, List, Optional, Set, Union
 import time
 import uuid
 
@@ -127,27 +96,74 @@ def next_batch_id() -> str:
 
 
 class AWSTranscriptionService(TranscriptionService):
-    def _get_batch_status(self, batch_id: str) -> List[Dict[str, Any]]:
+    def _get_batch_status(
+        self, batch_id: str, job_ids_expected: List[str]
+    ) -> List[Dict[str, Any]]:
+        """
+        NOTE: as of 20210719 there is some bug in aws transcribe
+        where for some transcribe jobs, list_transcription_jobs will REPEATEDLY
+        return a NextToken and then on each subsequent response return no jobs
+        but another NextToken.
+
+        This causes a loop of requests and eventually a throttle exception.
+
+        To mitigate the problem, doing a few things which would seem unnecessary:
+
+         - pass a list of job_ids_expected and just return when we have them all
+         - stop requesting NextToken page if we get a response w no jobs in result
+        """
+        job_ids_pending: Set[str] = set(job_ids_expected)
         result: List[Dict[str, Any]] = []
-        logger.info(
-            f"requesting batch status...list_transcription_jobs(JobNameContains={batch_id})"
-        )
-        cur_result_page = self.transcribe_client.list_transcription_jobs(
-            JobNameContains=batch_id
-        )
-        while True:
-            cur_result_summaries: List[Dict[str, Any]] = cur_result_page.get(
-                "TranscriptionJobSummaries"
+        try:
+            logger.info(
+                f"requesting batch status...list_transcription_jobs(JobNameContains={batch_id})"
             )
-            for r in cur_result_summaries:
-                result.append(r)
-            next_token = cur_result_page.get("NextToken", "")
-            if not next_token:
-                break
             cur_result_page = self.transcribe_client.list_transcription_jobs(
-                JobNameContains=batch_id, NextToken=next_token
+                JobNameContains=batch_id
             )
-        return result
+            logger.info(
+                f"list_transcription_jobs(JobNameContains={batch_id})...result={cur_result_page}"
+            )
+            while True:
+                cur_result_summaries: List[Dict[str, Any]] = cur_result_page.get(
+                    "TranscriptionJobSummaries"
+                )
+                if not cur_result_summaries:
+                    # mitigation 2 for weird NextToken behavior.
+                    # Getting a response with no job results should never happen
+                    # but seems to happen in loops when we ask for nexttoken page.
+                    # So if we get an empty result, just exit for now
+                    break
+                for r in cur_result_summaries:
+                    result.append(r)
+                    job_id = r.get("TranscriptionJobName", "")
+                    if job_id in job_ids_pending:
+                        job_ids_pending.remove(job_id)
+                if not job_ids_pending:
+                    # mitigation 1 for weird NextToken behavior
+                    # we have updates for all the job ids we care about,
+                    # so just ignore next token even if it's there
+                    break
+                next_token = cur_result_page.get("NextToken", "")
+                logger.info(
+                    f"list_transcription_jobs(JobNameContains={batch_id}) got a nexttoken! {cur_result_page}"
+                )
+                if not next_token:
+                    break
+                cur_result_page = self.transcribe_client.list_transcription_jobs(
+                    JobNameContains=batch_id, NextToken=next_token
+                )
+                logger.info(
+                    f"list_transcription_jobs(JobNameContains={batch_id}, NextToken={next_token})"
+                )
+            return result
+        except ClientError as ex:
+            if re.search("throttlingexception", str(ex), re.IGNORECASE):
+                logger.info(
+                    f"[batch: {batch_id}] received a throttling exception, just return empty status for now and allow polling to continue"
+                )
+                return result
+            raise ex
 
     def _load_transcript(self, aws_job_name: str) -> str:
         aws_job = self.transcribe_client.get_transcription_job(
@@ -248,7 +264,7 @@ class AWSTranscriptionService(TranscriptionService):
             check_status_start = time.time()
             logger.info(f"transcribe[{batch_id}]: checking status...")
             result = self._try_ensure_all_jobs_started(result, batch_id, on_update)
-            result = self._update_status(result, batch_id, on_update)
+            result = self._update_status(result, batch_id, on_update=on_update)
             logger.info(
                 f"transcribe[{batch_id}]: checking status completed in {time.time() - check_status_start} secs"
             )
@@ -299,10 +315,10 @@ class AWSTranscriptionService(TranscriptionService):
         except BaseException as ex:
             if re.search("limitexceeded", str(ex), re.IGNORECASE):
                 logger.info(
-                    "received a limit-exceeded response from aws. Will try again to start this job shortly"
+                    f"[batch: {batch_id}] received a limit-exceeded response from aws. Will try again to start this job shortly"
                 )
             else:
-                logger.exception(f"exception on start jobs: {ex}")
+                logger.exception(f"[batch: {batch_id}] exception on start jobs: {ex}")
         if job_ids_started:
             self._send_on_update(result, job_ids_started, on_update)
         return result
@@ -311,9 +327,11 @@ class AWSTranscriptionService(TranscriptionService):
         self,
         result: TranscribeBatchResult,
         batch_id: str,
-        on_update: Optional[Callable[[TranscribeJobsUpdate], None]],
+        on_update: Optional[Callable[[TranscribeJobsUpdate], None]] = None,
     ) -> TranscribeBatchResult:
-        job_updates = self._get_batch_status(batch_id)
+        job_updates = self._get_batch_status(
+            batch_id, [j.get_fq_id() for j in result.jobs()]
+        )
         ids_updated: List[str] = []
         result = copy_shallow(result)
         for ju in job_updates:
@@ -325,7 +343,7 @@ class AWSTranscriptionService(TranscriptionService):
                 )
                 if jstatus == TranscribeJobStatus.NONE:
                     raise ValueError(
-                        f"job status has unknown value of {ju.get('TranscriptionJobStatus')}"
+                        f"[batch: {batch_id}] job status has unknown value of {ju.get('TranscriptionJobStatus')}"
                     )
                 if result.job_completed(jid, jstatus):
                     continue
@@ -337,10 +355,12 @@ class AWSTranscriptionService(TranscriptionService):
                 if result.update_job(jid, status=jstatus, transcript=transcript):
                     ids_updated.append(jid)
             except Exception as ex:
-                logger.exception(f"failed to handle update for {ju}: {ex}")
+                logger.exception(
+                    f"[batch: {batch_id}] failed to handle update for {ju}: {ex}"
+                )
         summary = result.summary()
         logger.info(
-            f"transcribe [{summary.get_count_completed()}/{summary.get_count_total()}] completed. Statuses [SUCCEEDED: {summary.get_count(TranscribeJobStatus.SUCCEEDED)}, FAILED: {summary.get_count(TranscribeJobStatus.FAILED)}, QUEUED: {summary.get_count(TranscribeJobStatus.QUEUED)}, IN_PROGRESS: {summary.get_count(TranscribeJobStatus.IN_PROGRESS)}]."
+            f"[batch: {batch_id}] transcribe [{summary.get_count_completed()}/{summary.get_count_total()}] completed. Statuses [SUCCEEDED: {summary.get_count(TranscribeJobStatus.SUCCEEDED)}, FAILED: {summary.get_count(TranscribeJobStatus.FAILED)}, QUEUED: {summary.get_count(TranscribeJobStatus.QUEUED)}, IN_PROGRESS: {summary.get_count(TranscribeJobStatus.IN_PROGRESS)}]."
         )
         self._send_on_update(result, ids_updated, on_update)
         return result
