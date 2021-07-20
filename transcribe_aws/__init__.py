@@ -115,15 +115,17 @@ class AWSTranscriptionService(TranscriptionService):
         job_ids_pending: Set[str] = set(job_ids_expected)
         result: List[Dict[str, Any]] = []
         try:
-            logger.info(
-                f"requesting batch status...list_transcription_jobs(JobNameContains={batch_id})"
-            )
+            if logger.level == logging.DEBUG:
+                logger.debug(
+                    f"requesting batch status...list_transcription_jobs(JobNameContains={batch_id})"
+                )
             cur_result_page = self.transcribe_client.list_transcription_jobs(
                 JobNameContains=batch_id
             )
-            logger.info(
-                f"list_transcription_jobs(JobNameContains={batch_id})...result={cur_result_page}"
-            )
+            if logger.level == logging.DEBUG:
+                logger.debug(
+                    f"list_transcription_jobs(JobNameContains={batch_id})...result={cur_result_page}"
+                )
             while True:
                 cur_result_summaries: List[Dict[str, Any]] = cur_result_page.get(
                     "TranscriptionJobSummaries"
@@ -145,21 +147,25 @@ class AWSTranscriptionService(TranscriptionService):
                     # so just ignore next token even if it's there
                     break
                 next_token = cur_result_page.get("NextToken", "")
-                logger.info(
-                    f"list_transcription_jobs(JobNameContains={batch_id}) got a nexttoken! {cur_result_page}"
-                )
+                if logger.level == logging.DEBUG:
+                    logger.debug(
+                        f"list_transcription_jobs(JobNameContains={batch_id}) got a nexttoken! {cur_result_page}"
+                    )
                 if not next_token:
                     break
                 cur_result_page = self.transcribe_client.list_transcription_jobs(
                     JobNameContains=batch_id, NextToken=next_token
                 )
-                logger.info(
-                    f"list_transcription_jobs(JobNameContains={batch_id}, NextToken={next_token})"
-                )
+                if logger.level == logging.DEBUG:
+                    logger.debug(
+                        f"list_transcription_jobs(JobNameContains={batch_id}, NextToken={next_token})"
+                    )
             return result
         except ClientError as ex:
-            if re.search("throttlingexception", str(ex), re.IGNORECASE):
-                logger.info(
+            if re.search("throttlingexception", str(ex), re.IGNORECASE) or re.search(
+                "limitexceeded", str(ex), re.IGNORECASE
+            ):
+                logger.warning(
                     f"[batch: {batch_id}] received a throttling exception, just return empty status for now and allow polling to continue"
                 )
                 return result
@@ -220,11 +226,6 @@ class AWSTranscriptionService(TranscriptionService):
                 "POLL_INTERVAL",
                 os.environ.get("TRANSCRIBE_AWS_POLL_INTERVAL", DEFAULT_POLL_INTERVAL),
             )
-        )
-        logger.info(f"poll_interval={self.poll_interval}")
-        logger.info(f"config.get(POLL_INTERVAL)={config.get('POLL_INTERVAL')}")
-        logger.info(
-            f"os.environ.get('TRANSCRIBE_AWS_POLL_INTERVAL')={os.environ.get('TRANSCRIBE_AWS_POLL_INTERVAL')}"
         )
 
     def transcribe(
@@ -313,8 +314,10 @@ class AWSTranscriptionService(TranscriptionService):
                 result.update_job(jid, status=TranscribeJobStatus.QUEUED)
                 job_ids_started.append(jid)
         except BaseException as ex:
-            if re.search("limitexceeded", str(ex), re.IGNORECASE):
-                logger.info(
+            if re.search("throttlingexception", str(ex), re.IGNORECASE) or re.search(
+                "limitexceeded", str(ex), re.IGNORECASE
+            ):
+                logger.warning(
                     f"[batch: {batch_id}] received a limit-exceeded response from aws. Will try again to start this job shortly"
                 )
             else:
