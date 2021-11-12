@@ -35,7 +35,11 @@ from .helpers import (
         (
             TranscribeTestFixture(
                 requests=[
-                    TranscribeJobRequest(jobId="m1-u1", sourceFile="/audio/m1/u1.wav")
+                    TranscribeJobRequest(
+                        jobId="m1-u1",
+                        sourceFile="/audio/m1/u1.wav",
+                        generateSubtitles=True,
+                    )
                 ],
                 override_expected_start_job_calls=[
                     AwsTranscribeStartJobCall(
@@ -46,6 +50,7 @@ from .helpers import (
                                 "MediaFileUri": f"https://s3.{TEST_AWS_REGION}.amazonaws.com/{TEST_TRANSCRIBE_SOURCE_BUCKET}/b1-m1-u1.wav"
                             },
                             "MediaFormat": "wav",
+                            "Subtitles": {"Formats": ["vtt"]},
                         }
                     )
                 ],
@@ -122,7 +127,10 @@ from .helpers import (
                                     {
                                         "transcript": "some transcript for mentor m1 and utterance u1"
                                     }
-                                ]
+                                ],
+                                "subtitles": [
+                                    "00:00 - 00:10 some transcript for mentor m1 and utterance u1"
+                                ],
                             }
                         },
                     ),
@@ -146,7 +154,10 @@ from .helpers import (
                                     {
                                         "transcript": "some transcript for mentor m1 and utterance u1"
                                     }
-                                ]
+                                ],
+                                "subtitles": [
+                                    "00:00 - 00:10 some transcript for mentor m1 and utterance u1"
+                                ],
                             }
                         },
                     ),
@@ -166,6 +177,8 @@ from .helpers import (
                             mediaFormat="wav",
                             status=TranscribeJobStatus.SUCCEEDED,
                             transcript="some transcript for mentor m1 and utterance u1",
+                            generateSubtitles=True,
+                            subtitles="00:00 - 00:10 some transcript for mentor m1 and utterance u1",
                         )
                     }
                 ),
@@ -179,6 +192,7 @@ from .helpers import (
                                     sourceFile="/audio/m1/u1.wav",
                                     mediaFormat="wav",
                                     status=TranscribeJobStatus.UPLOADED,
+                                    generateSubtitles=True,
                                 )
                             }
                         ),
@@ -193,6 +207,7 @@ from .helpers import (
                                     sourceFile="/audio/m1/u1.wav",
                                     mediaFormat="wav",
                                     status=TranscribeJobStatus.QUEUED,
+                                    generateSubtitles=True,
                                 )
                             }
                         ),
@@ -207,6 +222,7 @@ from .helpers import (
                                     sourceFile="/audio/m1/u1.wav",
                                     mediaFormat="wav",
                                     status=TranscribeJobStatus.IN_PROGRESS,
+                                    generateSubtitles=True,
                                 )
                             }
                         ),
@@ -221,6 +237,8 @@ from .helpers import (
                                     sourceFile="/audio/m1/u1.wav",
                                     mediaFormat="wav",
                                     status=TranscribeJobStatus.SUCCEEDED,
+                                    generateSubtitles=True,
+                                    subtitles="00:00 - 00:10 some transcript for mentor m1 and utterance u1",
                                     transcript="some transcript for mentor m1 and utterance u1",
                                 )
                             }
@@ -232,7 +250,7 @@ from .helpers import (
         )
     ],
 )
-def test_it_uploads_one_jobs_and_tracks_progress_until_completion(
+def test_it_handles_subtitle_generation(
     mock_boto3_client, fixture: TranscribeTestFixture
 ):
     run_transcribe_test(mock_boto3_client, fixture)
