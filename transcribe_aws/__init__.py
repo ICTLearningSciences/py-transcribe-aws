@@ -201,13 +201,13 @@ class AWSTranscriptionService(TranscriptionService):
             .get("Subtitles", {})
             .get("SubtitleFileUris", [])
         )
-        url = url[0]
         if not url:
             return ""
+        url = url[0]
         subtitle_res = requests.get(url)
         subtitle_res.raise_for_status()
-        subtitle_text = subtitle_res.text
         try:
+            subtitle_text = subtitle_res.text
             return subtitle_text
         except Exception:
             raise Exception(
