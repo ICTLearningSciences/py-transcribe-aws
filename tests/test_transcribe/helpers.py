@@ -35,6 +35,7 @@ class AwsTranscribeGetJobCall:
     name: str
     result: Dict[str, Any] = field(default_factory=lambda: {})
     transcribe_url_response: Dict[str, Any] = field(default_factory=lambda: {})
+    subtitles_url_response: str = ""
 
     def is_success_result(self) -> bool:
         return bool(
@@ -46,6 +47,13 @@ class AwsTranscribeGetJobCall:
 
     def get_transcription_url(self) -> bool:
         return self.result["TranscriptionJob"]["Transcript"]["TranscriptFileUri"]
+
+    def get_subtitle_url(self) -> bool:
+        try:
+            url = self.result["TranscriptionJob"]["Subtitles"]["SubtitleFileUris"][0]
+            return url
+        except Exception:
+            raise Exception(self.result)
 
 
 @dataclass
@@ -174,7 +182,9 @@ def run_transcribe_test(mock_boto3_client: Mock, fixture: TranscribeTestFixture)
                 expected_get_job_calls.append(call(TranscriptionJobName=gjc.name))
                 if gjc.is_success_result():
                     t_url = gjc.get_transcription_url()
+                    sub_url = gjc.get_subtitle_url()
                     mock_requests.get(t_url, json=gjc.transcribe_url_response)
+                    mock_requests.get(sub_url, text=gjc.subtitles_url_response)
                 mock_get_job_responses.append(gjc.result)
             mock_transcribe_client.get_transcription_job.side_effect = (
                 mock_get_job_responses

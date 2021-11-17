@@ -159,6 +159,10 @@ from .helpers import (
                                 "Transcript": {
                                     "TranscriptFileUri": "http://fake/b1-m1-u1"
                                 },
+                                "Subtitles": {
+                                    "Formats": ["vtt"],
+                                    "SubtitleFileUris": ["http://fake/b1-m1-u1.vtt"],
+                                },
                             }
                         },
                         transcribe_url_response={
@@ -170,6 +174,7 @@ from .helpers import (
                                 ]
                             }
                         },
+                        subtitles_url_response="WEB VTT\n\n00:00-->00:10\nsome transcript for mentor m1 and utterance u1\n\n",
                     ),
                     AwsTranscribeGetJobCall(
                         name="b1-m1-u3",
@@ -178,6 +183,10 @@ from .helpers import (
                                 "TranscriptionJobStatus": "COMPLETED",
                                 "Transcript": {
                                     "TranscriptFileUri": "http://fake/b1-m1-u3"
+                                },
+                                "Subtitles": {
+                                    "Formats": ["vtt"],
+                                    "SubtitleFileUris": ["http://fake/b1-m1-u3.vtt"],
                                 },
                             }
                         },
@@ -190,6 +199,7 @@ from .helpers import (
                                 ]
                             }
                         },
+                        subtitles_url_response="WEB VTT\n\n00:00-->00:10\nsome transcript for mentor m1 and utterance u3\n\n",
                     ),
                     AwsTranscribeGetJobCall(
                         name="b1-m1-u2",
@@ -198,6 +208,10 @@ from .helpers import (
                                 "TranscriptionJobStatus": "COMPLETED",
                                 "Transcript": {
                                     "TranscriptFileUri": "http://fake/b1-m1-u2"
+                                },
+                                "Subtitles": {
+                                    "Formats": ["vtt"],
+                                    "SubtitleFileUris": ["http://fake/b1-m1-u2.vtt"],
                                 },
                             }
                         },
@@ -210,6 +224,7 @@ from .helpers import (
                                 ]
                             }
                         },
+                        subtitles_url_response="WEB VTT\n\n00:00-->00:10\nsome transcript for mentor m1 and utterance u2\n\n",
                     ),
                 ],
                 expected_result=TranscribeBatchResult(

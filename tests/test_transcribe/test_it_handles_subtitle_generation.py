@@ -128,11 +128,9 @@ from .helpers import (
                                         "transcript": "some transcript for mentor m1 and utterance u1"
                                     }
                                 ],
-                                "subtitles": [
-                                    "00:00 - 00:10 some transcript for mentor m1 and utterance u1"
-                                ],
                             }
                         },
+                        subtitles_url_response="WEB VTT\n\n00:00-->00:10\nsome transcript for mentor m1 and utterance u1\n\n",
                     ),
                     AwsTranscribeGetJobCall(
                         name="b1-m1-u1",
@@ -144,7 +142,7 @@ from .helpers import (
                                 },
                                 "Subtitles": {
                                     "Formats": ["vtt"],
-                                    "SubtitleFileUris": ["http://fake/b1-m1-u1"],
+                                    "SubtitleFileUris": ["http://fakesub/b1-m1-u1.vtt"],
                                 },
                             }
                         },
@@ -155,11 +153,9 @@ from .helpers import (
                                         "transcript": "some transcript for mentor m1 and utterance u1"
                                     }
                                 ],
-                                "subtitles": [
-                                    "00:00 - 00:10 some transcript for mentor m1 and utterance u1"
-                                ],
                             }
                         },
+                        subtitles_url_response="WEB VTT\n\n00:00-->00:10\nsome transcript for mentor m1 and utterance u1\n\n",
                     ),
                 ],
                 expected_sleep_calls=[
@@ -178,7 +174,7 @@ from .helpers import (
                             status=TranscribeJobStatus.SUCCEEDED,
                             transcript="some transcript for mentor m1 and utterance u1",
                             generateSubtitles=True,
-                            subtitles="00:00 - 00:10 some transcript for mentor m1 and utterance u1",
+                            subtitles="WEB VTT\n\n00:00-->00:10\nsome transcript for mentor m1 and utterance u1\n\n",
                         )
                     }
                 ),
@@ -238,7 +234,7 @@ from .helpers import (
                                     mediaFormat="wav",
                                     status=TranscribeJobStatus.SUCCEEDED,
                                     generateSubtitles=True,
-                                    subtitles="00:00 - 00:10 some transcript for mentor m1 and utterance u1",
+                                    subtitles="WEB VTT\n\n00:00-->00:10\nsome transcript for mentor m1 and utterance u1\n\n",
                                     transcript="some transcript for mentor m1 and utterance u1",
                                 )
                             }
