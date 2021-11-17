@@ -45,6 +45,13 @@ class AwsTranscribeGetJobCall:
             == "COMPLETED"
         )
 
+    def has_subtitle_generation(self) -> bool:
+        return bool(
+            self.result
+            and "TranscriptionJob" in self.result
+            and "Subtitles" in self.result["TranscriptionJob"]
+        )
+
     def get_transcription_url(self) -> bool:
         return self.result["TranscriptionJob"]["Transcript"]["TranscriptFileUri"]
 
@@ -182,9 +189,10 @@ def run_transcribe_test(mock_boto3_client: Mock, fixture: TranscribeTestFixture)
                 expected_get_job_calls.append(call(TranscriptionJobName=gjc.name))
                 if gjc.is_success_result():
                     t_url = gjc.get_transcription_url()
-                    sub_url = gjc.get_subtitle_url()
                     mock_requests.get(t_url, json=gjc.transcribe_url_response)
-                    mock_requests.get(sub_url, text=gjc.subtitles_url_response)
+                    if gjc.has_subtitle_generation():
+                        sub_url = gjc.get_subtitle_url()
+                        mock_requests.get(sub_url, text=gjc.subtitles_url_response)
                 mock_get_job_responses.append(gjc.result)
             mock_transcribe_client.get_transcription_job.side_effect = (
                 mock_get_job_responses
