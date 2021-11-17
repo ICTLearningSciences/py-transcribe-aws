@@ -175,7 +175,6 @@ class AWSTranscriptionService(TranscriptionService):
         aws_job = self.transcribe_client.get_transcription_job(
             TranscriptionJobName=aws_job_name
         )
-        # sets up the url to fetch the transcript from
         url = (
             aws_job.get("TranscriptionJob", {})
             .get("Transcript", {})
@@ -183,12 +182,10 @@ class AWSTranscriptionService(TranscriptionService):
         )
         if not url:
             raise Exception(f"unable to parse url for job '{aws_job_name}': {aws_job}")
-        # actually fetches the transcript from the url
         transcript_res = requests.get(url)
         transcript_res.raise_for_status()
         transcript_json = transcript_res.json()
         try:
-            # extracts the transcription job from the request
             return transcript_json["results"]["transcripts"][0]["transcript"]
         except Exception:
             raise Exception(
@@ -199,42 +196,22 @@ class AWSTranscriptionService(TranscriptionService):
         aws_job = self.transcribe_client.get_transcription_job(
             TranscriptionJobName=aws_job_name
         )
-        logger.info("aws_job")
-        logger.info(aws_job)
-        # sets up the url to fetch the subtitles from
         url = (
             aws_job.get("TranscriptionJob", {})
             .get("Subtitles", {})
             .get("SubtitleFileUris", [])
         )
-        logger.info("url before indexing")
-        logger.info(url)
         url = url[0]
-        logger.info("url after indexing")
-        logger.info(url)
         if not url:
             return ""
-        # actually fetches the subtitles from the subtitle uri
-        transcript_res = requests.get(url)
-        transcript_res.raise_for_status()
-        logger.info("transcript_res")
-        logger.info(transcript_res)
-        logger.info("transcript_res.text")
-        logger.info(transcript_res.text)
-        logger.info("transcript_res.content")
-        logger.info(transcript_res.content)
-        logger.info("transcript_res.apparent_encoding")
-        logger.info(transcript_res.apparent_encoding)
-        logger.info(type(transcript_res.content))
-        subtitle_text = transcript_res.text
+        subtitle_res = requests.get(url)
+        subtitle_res.raise_for_status()
+        subtitle_text = subtitle_res.text
         try:
-            # extracts the subtitles from the request
-            # TODO: This parsing is just a guess
-            logger.info(subtitle_text)
             return subtitle_text
         except Exception:
             raise Exception(
-                f"unable to parse subtitle for job '{aws_job_name} and url {url}': {transcript_res}"
+                f"unable to parse subtitle for job '{aws_job_name} and url {url}': {subtitle_res}"
             )
 
     def get_s3_path(self, source_file: str, id: str) -> str:
