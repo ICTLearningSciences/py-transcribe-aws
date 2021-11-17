@@ -23,7 +23,7 @@ def _read_version():
 
 
 setup(
-    name="py_transcribe_aws-test-5",
+    name="py_transcribe_aws",
     version=_read_version(),
     author_email="larrykirschner@gmail.com",
     description="framework for synchronous batch speech-to-text transcription using backends like AWS, Watson, etc.",
