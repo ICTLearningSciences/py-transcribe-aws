@@ -234,7 +234,7 @@ class AWSTranscriptionService(TranscriptionService):
             return subtitle_text
         except Exception:
             raise Exception(
-                f"unable to parse subtitle for job '{aws_job_name} and url {url}' (To future Aaron: You probably didn't parse it correctly): {transcript_res}"
+                f"unable to parse subtitle for job '{aws_job_name} and url {url}': {transcript_res}"
             )
 
     def get_s3_path(self, source_file: str, id: str) -> str:

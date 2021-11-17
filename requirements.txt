@@ -2,4 +2,4 @@ awscli>=1.18.165
 boto3>=1.16.5
 boto3_type_annotations>=0.3.1
 requests>=2.24.0
-py-transcribe-test-2>=1.0.0
+py-transcribe-test-3>=1.0.0
