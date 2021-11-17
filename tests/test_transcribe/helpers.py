@@ -56,11 +56,7 @@ class AwsTranscribeGetJobCall:
         return self.result["TranscriptionJob"]["Transcript"]["TranscriptFileUri"]
 
     def get_subtitle_url(self) -> bool:
-        try:
-            url = self.result["TranscriptionJob"]["Subtitles"]["SubtitleFileUris"][0]
-            return url
-        except Exception:
-            raise Exception(self.result)
+        return self.result["TranscriptionJob"]["Subtitles"]["SubtitleFileUris"][0]
 
 
 @dataclass
